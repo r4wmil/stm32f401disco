@@ -35,3 +35,11 @@ T - industrial temp range (-40C, +85C)
 U - no internal voltage regulator
 STM32 naming conventions:
 - https://www.compilenrun.com/docs/iot/stm32/stm32-fundamentals/stm32-naming-convention/
+
+## Misc
+### ARM toolchain on MSYS2
+```
+pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-toolchain
+pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-gdb
+pacman -S mingw-w64-ucrt-x86_64-stlink
+```
