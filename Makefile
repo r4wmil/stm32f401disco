@@ -1,3 +1,7 @@
+# TODO: building without need to clear out/* by hand
+
+EXAMPLE=1_blink
+
 CC = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 STFLASH = st-flash
@@ -6,7 +10,7 @@ CFLAGS = -mcpu=cortex-m4 -mthumb -specs=nosys.specs -DSTM32F401xC
 CFLAGS += -I. -I/usr/arm-none-eabi/include
 CFLAGS += -I./CMSIS/Core/Include -I./CMSIS/STM32F4xx/Include
 
-SRCS = 1_blink/main.c
+SRCS = $(EXAMPLE)/main.c
 SRCS += ./startup_stm32f401xc.s
 SRCS += ./system_stm32f4xx.c
 
@@ -31,4 +35,4 @@ $(BIN): $(ELF)
 clean:
 	rm -rf $(OUT_DIR)
 
-.PHONY: all clean
+.PHONY: all clean
