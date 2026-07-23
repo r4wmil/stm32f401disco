@@ -8,7 +8,7 @@ STFLASH = st-flash
 
 CFLAGS = -mcpu=cortex-m4 -mthumb -specs=nosys.specs -DSTM32F401xC
 CFLAGS += -I. -I/usr/arm-none-eabi/include
-CFLAGS += -I./CMSIS/Core/Include -I./CMSIS/STM32F4xx/Include
+CFLAGS += -I./Drivers/CMSIS/Core/Include -I./Drivers/CMSIS/STM32F4xx/Include
 
 SRCS = $(EXAMPLE)/main.c
 SRCS += ./startup_stm32f401xc.s
