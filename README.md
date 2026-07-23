@@ -5,6 +5,8 @@
 make EXAMPLE=1_blink
 # Convolutional Tests
 make EXAMPLE=2_conv
+# PWM with leds
+make EXAMPLE=3_pwm_leds
 ```
 
 ## Requirments
