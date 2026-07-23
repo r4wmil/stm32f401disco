@@ -1,4 +1,5 @@
 #include "stm32f4xx.h"
+#include "math.h"
 
 #define LED1 12
 #define LED2 13
@@ -30,7 +31,11 @@ int main(void) {
 	// CR1 - Control Register 1
 	TIM4->CR1 |= (1U << 0);
 	
+	float t = 0.0f;
 	while (1) {
+		t += 0.0002f;
+		if (t > 1.0f) { t = 0.0f; }
+		TIM4->CCR1 = (powf(t, 5)) * 1000U;
 		__NOP();
 	}
 }
