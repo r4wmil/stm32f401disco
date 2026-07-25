@@ -35,7 +35,7 @@ int main(void) {
 	while (1) {
 		t += 0.0002f;
 		if (t > 1.0f) { t = 0.0f; }
-		TIM4->CCR1 = (powf(t, 5)) * 1000U;
+		TIM4->CCR1 = (powf(sinf(2*M_PI*t)*0.5f + 0.5f, 5)) * 1000U;
 		__NOP();
 	}
 }
