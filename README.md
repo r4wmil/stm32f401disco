@@ -1,12 +1,11 @@
 # STM32F401 Discovery experimentation
 ## Building
 ```sh
-# Blinking Program
 make EXAMPLE=1_blink
-# Convolutional Tests
-make EXAMPLE=2_conv
-# PWM with leds
-make EXAMPLE=3_pwm_leds
+# 1_blink: Blinking Program
+# 2_conv: Convolutional Tests
+# 3_pwm_leds: PWM with leds
+# 4_pwm_mul: PWM with multiple leds
 ```
 
 ## Requirments
