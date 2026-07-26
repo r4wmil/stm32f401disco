@@ -63,8 +63,42 @@ void mco_init() {
 	GPIOA->AFR[1]  &= ~(0xF << ((8 - 8) * 4));
 }
 
+int clock_index = 0;
+
+void set_clock(uint8_t n) {
+	clock_index = n;
+	switch (n) {
+	case 0:
+		RCC->CR |= RCC_CR_HSION;
+		while (!(RCC->CR & RCC_CR_HSIRDY));
+
+		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
+		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
+
+		break;
+	case 1:
+		RCC->CR |= RCC_CR_HSEON;
+		while (!(RCC->CR && RCC_CR_HSERDY));
+
+		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
+		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
+
+		break;
+	}
+}
+
 void handler() {
-	GPIOD->ODR ^= (1U << LED1);
+	static uint8_t curr = 0;
+	curr = (curr + 1) % 2;
+	set_clock(curr);
+}
+
+void blink() {
+	static uint32_t count = 0;
+	const uint32_t max_count = 50000;
+	count = (count + 1) % max_count;
+	GPIOD->ODR &= ~(0xFU << LED1);
+	GPIOD->ODR |= ((count > max_count / 2) << LED1 + clock_index);
 }
 
 int main(void) {
@@ -72,9 +106,10 @@ int main(void) {
 	leds_init();
 	mco_init();
 
-	GPIOD->ODR |= (1U << LED1);
+	set_clock(0);
 
 	while (1) {
+		blink();
 		btn_event(handler);
 	}
 }
