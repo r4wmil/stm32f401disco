@@ -6,6 +6,7 @@ make EXAMPLE=1_blink
 # 2_conv: Convolutional Tests
 # 3_pwm_leds: PWM with leds
 # 4_pwm_mul: PWM with multiple leds
+# 5_button: button example with debounce
 ```
 
 ## Requirments
@@ -45,3 +46,5 @@ pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-toolchain
 pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-gdb
 pacman -S mingw-w64-ucrt-x86_64-stlink
 ```
+
+CMSIS - Cortex Microcontroller Software Interface Standart
