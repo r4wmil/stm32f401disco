@@ -4,9 +4,38 @@
 #define LED2 13
 #define LED3 14
 #define LED4 15
+#define BTN  0
 
-int main(void) {
-	// --- LEDs setup ---
+void btn_init() {
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+	GPIOA->MODER &= ~(0x3 << (BTN * 2));
+	GPIOA->PUPDR &= ~(0x3 << (BTN * 2));
+}
+
+bool btn_read() {
+	return (GPIOA->IDR & (1U << BTN)) != 0;
+}
+
+typedef void (*fn_type)();
+
+void btn_event(fn_type fn) {
+	static bool btn_pressed = false;
+	static int debounce = -1;
+	if (btn_read()) {
+		if (btn_pressed) return;
+		if (debounce == -1) debounce = 1000;
+		if (debounce > 0) { debounce--; return; }
+		if (btn_read()) {
+			fn();
+			btn_pressed = true;
+		}
+		return;
+	}
+	debounce = -1;
+	btn_pressed = false;
+}
+
+void leds_init() {
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
 	GPIOD->MODER &= ~(
 		  (0x3 << (LED1 * 2))
@@ -18,13 +47,13 @@ int main(void) {
 		| (0x1 << (LED2 * 2))
 		| (0x1 << (LED3 * 2))
 		| (0x1 << (LED4 * 2));
+}
 
-	// --- MCO1 setup ---
+void mco_init() {
 	// MCO1 - Microcontroller Clock Output 1
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
 	RCC->CFGR &= ~(0x3 << RCC_CFGR_MCO1_Pos);
 	RCC->CFGR |=  (0x0 << RCC_CFGR_MCO1_Pos); // HSI
-
 	// PA8 - Port A, Pin 8
 	GPIOA->MODER   &= ~(0x3 << (8 * 2));
 	GPIOA->MODER   |=  (0x2 << (8 * 2));
@@ -32,9 +61,20 @@ int main(void) {
 	GPIOA->OSPEEDR &= ~(0x3 << (8 * 2));
 	GPIOA->OSPEEDR |=  (0x3 << (8 * 2));
 	GPIOA->AFR[1]  &= ~(0xF << ((8 - 8) * 4));
+}
+
+void handler() {
+	GPIOD->ODR ^= (1U << LED1);
+}
+
+int main(void) {
+	btn_init();
+	leds_init();
+	mco_init();
+
+	GPIOD->ODR |= (1U << LED1);
 
 	while (1) {
-		GPIOD->ODR ^= (1U << LED1);
-		for (volatile uint32_t i = 0; i < 500000; i++);
+		btn_event(handler);
 	}
 }
