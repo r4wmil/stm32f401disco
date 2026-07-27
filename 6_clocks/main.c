@@ -80,10 +80,6 @@ void set_clock(uint8_t n) {
 		RCC->CR |= RCC_CR_HSION;
 		while (!(RCC->CR & RCC_CR_HSIRDY));
 
-		// MCO - Microcontroller Clock Output 1
-		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
-		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
-
 		// CFGR - (Clock) ConFiGuration Register
 		// SW - (System Clock) SWitch
 		// SWS - (System Clock) SWich Status
@@ -91,17 +87,72 @@ void set_clock(uint8_t n) {
 		RCC->CFGR |= RCC_CFGR_SW_HSI;
 		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
 
+		// MCO - Microcontroller Clock Output 1
+		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
+		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
+
 		break;
 	case 1:
 		RCC->CR |= RCC_CR_HSEON;
 		while (!(RCC->CR & RCC_CR_HSERDY));
 
-		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
-		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
-
 		RCC->CFGR &= ~RCC_CFGR_SW;
 		RCC->CFGR |= RCC_CFGR_SW_HSE;
 		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSE);
+
+		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
+		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
+
+		break;
+	case 2:
+		RCC->CR |= RCC_CR_HSEON;
+		while (!(RCC->CR & RCC_CR_HSERDY));
+
+		// Ensuring flash memory will properly work
+		// ACR - Access Control Register
+		FLASH->ACR = FLASH_ACR_LATENCY_2WS;
+
+		// Optional performance optimizations:
+		// - FLASH_ACR_ICEN - Instruction Cache
+		// - FLASH_ACR_DCEN - Data Cache
+		// - FLASH_ACR_PRFTEN - PReFetch
+
+		// AHB - Advanced High-performance Bus
+		// - CPU, SRAM, DMA, GPIO, etc.
+		// APB - Advanced Peripheral Bus
+		// - UART, SPI, I2C, ADC, etc.
+		// AHB = 84 MHz, APB1 = 42 MHz, APB2 = 84 MHz
+		RCC->CFGR =
+			  RCC_CFGR_HPRE_DIV1
+			| RCC_CFGR_PPRE1_DIV2
+			| RCC_CFGR_PPRE2_DIV1;
+
+		// VCO - Voltage-Controlled Oscilator
+		// VCO = (Clock Source / PLLM) * PLLN
+		// - Clock Source is HSE
+		// SYSCLK = VCO / PLLP
+		// PLL48CLK = VCO / PLLQ
+		// SYSCLK   = 8 MHz / 8 * 336 / 4 = 84 MHz
+		// PLL48CLK = 8 MHz / 8 * 336 / 7 = 48 MHz
+		// PLLQ - for peripherals like USB OTG FS, SDIO, RNG
+		RCC->PLLCFGR =
+			  (8U   << RCC_PLLCFGR_PLLM_Pos)
+			| (336U << RCC_PLLCFGR_PLLN_Pos)
+			| (1U   << RCC_PLLCFGR_PLLP_Pos)
+			| (7U   << RCC_PLLCFGR_PLLQ_Pos)
+			| RCC_PLLCFGR_PLLSRC_HSE;
+
+		RCC->CR |= RCC_CR_PLLON;
+		while (!(RCC->CR & RCC_CR_PLLRDY));
+
+		RCC->CFGR &= ~RCC_CFGR_SW;
+		RCC->CFGR |= RCC_CFGR_SW_PLL;
+		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+		SystemCoreClockUpdate(); // Sets SystemCoreClock value
+
+		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
+		RCC->CFGR |=  (3U << RCC_CFGR_MCO1_Pos);
 
 		break;
 	}
@@ -109,7 +160,7 @@ void set_clock(uint8_t n) {
 
 void handler() {
 	static uint8_t curr = 0;
-	curr = (curr + 1) % 2;
+	curr = (curr + 1) % 3;
 	set_clock(curr);
 }
 
