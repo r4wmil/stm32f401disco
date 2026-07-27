@@ -92,6 +92,12 @@ void set_clock(uint8_t n) {
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
 
+		// Disable PLL & HSE
+		RCC->CR &= ~RCC_CR_PLLON;
+		while (RCC->CR & RCC_CR_PLLRDY);
+		RCC->CR &= ~RCC_CR_HSEON;
+		while (RCC->CR & RCC_CR_HSERDY);
+
 		break;
 	case 1:
 		RCC->CR |= RCC_CR_HSEON;
@@ -103,6 +109,10 @@ void set_clock(uint8_t n) {
 
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
+
+		// Disable HSI
+		RCC->CR &= ~RCC_CR_HSION;
+		while (RCC->CR & RCC_CR_HSIRDY);
 
 		break;
 	case 2:
