@@ -75,6 +75,10 @@ void set_clock(uint8_t n) {
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
 
+		RCC->CFGR &= ~RCC_CFGR_SW;
+		RCC->CFGR |= RCC_CFGR_SW_HSI;
+		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
+
 		break;
 	case 1:
 		RCC->CR |= RCC_CR_HSEON;
@@ -82,6 +86,10 @@ void set_clock(uint8_t n) {
 
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
+
+		RCC->CFGR &= ~RCC_CFGR_SW;
+		RCC->CFGR |= RCC_CFGR_SW_HSE;
+		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSE);
 
 		break;
 	}
