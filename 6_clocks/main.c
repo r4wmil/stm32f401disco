@@ -1,3 +1,7 @@
+// This example blinking the lights with code so you can
+// feel the the SYSCLK speed 
+// Probing PA8 shows system clock signal
+
 #include "stm32f4xx.h"
 
 #define LED1 12
@@ -51,16 +55,17 @@ void leds_init() {
 
 void mco_init() {
 	// MCO1 - Microcontroller Clock Output 1
+	// Port A, Pin 8 (PA8)
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
 	RCC->CFGR &= ~(0x3 << RCC_CFGR_MCO1_Pos);
 	RCC->CFGR |=  (0x0 << RCC_CFGR_MCO1_Pos); // HSI
-	// PA8 - Port A, Pin 8
 	GPIOA->MODER   &= ~(0x3 << (8 * 2));
 	GPIOA->MODER   |=  (0x2 << (8 * 2));
 	GPIOA->PUPDR   &= ~(0x3 << (8 * 2));
 	GPIOA->OSPEEDR &= ~(0x3 << (8 * 2));
 	GPIOA->OSPEEDR |=  (0x3 << (8 * 2));
 	GPIOA->AFR[1]  &= ~(0xF << ((8 - 8) * 4));
+	// OSPEEDR - Output SPEED Register
 }
 
 int clock_index = 0;
@@ -69,12 +74,19 @@ void set_clock(uint8_t n) {
 	clock_index = n;
 	switch (n) {
 	case 0:
+		// RCC - Reset & Clock Control
+		// CR - Control Register
+		// HSERDY - High-Speed External ReaDY
 		RCC->CR |= RCC_CR_HSION;
 		while (!(RCC->CR & RCC_CR_HSIRDY));
 
+		// MCO - Microcontroller Clock Output 1
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (0U << RCC_CFGR_MCO1_Pos);
 
+		// CFGR - (Clock) ConFiGuration Register
+		// SW - (System Clock) SWitch
+		// SWS - (System Clock) SWich Status
 		RCC->CFGR &= ~RCC_CFGR_SW;
 		RCC->CFGR |= RCC_CFGR_SW_HSI;
 		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
@@ -82,7 +94,7 @@ void set_clock(uint8_t n) {
 		break;
 	case 1:
 		RCC->CR |= RCC_CR_HSEON;
-		while (!(RCC->CR && RCC_CR_HSERDY));
+		while (!(RCC->CR & RCC_CR_HSERDY));
 
 		RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);
 		RCC->CFGR |=  (2U << RCC_CFGR_MCO1_Pos);
