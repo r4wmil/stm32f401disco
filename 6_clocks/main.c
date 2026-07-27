@@ -69,6 +69,7 @@ void mco_init() {
 }
 
 int clock_index = 0;
+uint32_t led_count = 0;
 
 void set_clock(uint8_t n) {
 	clock_index = n;
@@ -156,6 +157,7 @@ void set_clock(uint8_t n) {
 
 		break;
 	}
+	led_count = 0;
 }
 
 void handler() {
@@ -165,11 +167,10 @@ void handler() {
 }
 
 void blink() {
-	static uint32_t count = 0;
-	const uint32_t max_count = 50000;
-	count = (count + 1) % max_count;
+	const uint32_t led_max_count = 50000;
+	led_count = (led_count + 1) % led_max_count;
 	GPIOD->ODR &= ~(0xFU << LED1);
-	GPIOD->ODR |= ((count > max_count / 2) << LED1 + clock_index);
+	GPIOD->ODR |= ((led_count < led_max_count / 2) << LED1 + clock_index);
 }
 
 int main(void) {
