@@ -27,7 +27,7 @@ void btn_event(fn_type fn) {
 	static int debounce = -1;
 	if (btn_read()) {
 		if (btn_pressed) return;
-		if (debounce == -1) debounce = 1000;
+		if (debounce == -1) debounce = SystemCoreClock / 100000;
 		if (debounce > 0) { debounce--; return; }
 		if (btn_read()) {
 			fn();
@@ -74,6 +74,7 @@ uint32_t led_count = 0;
 void set_clock(uint8_t n) {
 	clock_index = n;
 	switch (n) {
+	// HSI - High-Speed Internal
 	case 0:
 		// RCC - Reset & Clock Control
 		// CR - Control Register
@@ -99,6 +100,7 @@ void set_clock(uint8_t n) {
 		while (RCC->CR & RCC_CR_HSERDY);
 
 		break;
+	// HSE - High-Speed External
 	case 1:
 		RCC->CR |= RCC_CR_HSEON;
 		while (!(RCC->CR & RCC_CR_HSERDY));
@@ -115,6 +117,7 @@ void set_clock(uint8_t n) {
 		while (RCC->CR & RCC_CR_HSIRDY);
 
 		break;
+	// PLL - Phase Locked Loop
 	case 2:
 		RCC->CR |= RCC_CR_HSEON;
 		while (!(RCC->CR & RCC_CR_HSERDY));
