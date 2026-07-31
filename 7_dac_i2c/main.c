@@ -102,54 +102,64 @@ void dac_i2c_init() {
 	I2C1->CR1 |= I2C_CR1_PE;
 }
 
-uint8_t dac_chip_id() {
-	uint8_t cid;
+// --- I2C interface ---
 
-	// DR - Data Register
-	// SR - Status Register
-	// SB - Start Bit
+// DR - Data Register
+// SR - Status Register
+// SB - Start Bit
 
-	// Wait if busy
+void i2c_wait_byte() {
 	while (I2C1->SR2 & I2C_SR2_BUSY);
+}
 
-	// Generate START & wait until start bit was sent
+void i2c_start() {
 	I2C1->CR1 |= I2C_CR1_START;
 	while (!(I2C1->SR1 & I2C_SR1_SB));
+}
 
-	// --- WRITE ---
-	// Send device address + write (LSB = 0)
-	I2C1->DR = I2C_ADDR & ~1U;
+void i2c_write_addr(uint8_t data) {
+	I2C1->DR = data;
 	while (!(I2C1->SR1 & I2C_SR1_ADDR));
 	(void)I2C1->SR2;
-	// - read SR2 to clear ADDR
+}
 
-	// Send register address
-	I2C1->DR = 0x01;
+void i2c_write(uint8_t data) {
+	// TXE - transmit (TX) buffer Empty
+	I2C1->DR = data;
 	while (!(I2C1->SR1 & I2C_SR1_TXE));
+}
 
-	// Generate STOP
-	I2C1->CR1 |= I2C_CR1_STOP;
-
-	// --- RESTART ---
-
-	I2C1->CR1 |= I2C_CR1_START;
-	while (!(I2C1->SR1 & I2C_SR1_SB));
-	I2C1->DR = I2C_ADDR | 1U;
-	while (!(I2C1->SR1 & I2C_SR1_ADDR));
-	(void)I2C1->SR2;
-
-	// NACK + STOP for last byte
-	I2C1->CR1 &= ~I2C_CR1_ACK;
-	I2C1->CR1 |= I2C_CR1_STOP;
-
-	// --- READ ---
-
+void i2c_read(uint8_t* data) {
 	while (!(I2C1->SR1 & I2C_SR1_RXNE));
-	cid = I2C1->DR;
+	*data = I2C1->DR;
+}
 
-	I2C1->CR1 |= I2C_CR1_ACK;  // Re-enable ACK
+void i2c_stop() {
+	I2C1->CR1 |= I2C_CR1_STOP;
+}
 
-	return cid;
+uint8_t dac_reg_read(uint8_t reg) {
+	uint8_t data;
+
+	i2c_wait_byte();
+
+	i2c_start();
+	i2c_write_addr(I2C_ADDR & ~1U);
+	i2c_write(0x01);
+	i2c_stop();
+
+	i2c_start();
+	i2c_write_addr(I2C_ADDR | 1U);
+
+	I2C1->CR1 &= ~I2C_CR1_ACK;
+
+	i2c_stop();
+
+	i2c_read(&data);
+
+	I2C1->CR1 |= I2C_CR1_ACK;
+
+	return data;
 }
 
 int main() {
@@ -157,7 +167,7 @@ int main() {
 	leds_init();
 	dac_i2c_init();
 
-	uint8_t cid = dac_chip_id() & 0xf8;
+	uint8_t cid = dac_reg_read(0x01) & 0xf8;
 	GPIOD->ODR |= ((cid == 0xe0) << LEDS + 1);
 
 	while (1) {
