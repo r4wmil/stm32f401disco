@@ -43,6 +43,62 @@ void pll_init() {
 	SystemCoreClockUpdate();
 }
 
+void plli2s_init() {
+  // VCOI2S = HSE / PLLM * PLLI2N =
+  //        = 8 MHz / 8 * 192 =
+  //        = 192 MHz
+  // I2SCLK = VCOI2S / PLLI2R =
+  //        = 192 MHz / 4 =
+  //        = 48 MHz
+  RCC->PLLI2SCFGR =
+      (192U << RCC_PLLI2SCFGR_PLLI2SN_Pos)
+    | (2U   << RCC_PLLI2SCFGR_PLLI2SR_Pos);
+
+  RCC->CR |= RCC_CR_PLLI2SON;
+  while (!(RCC->CR & RCC_CR_PLLI2SRDY));
+}
+
+void spi3clk_init() {
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+
+	// PA4 = WS (AF6)
+	GPIOA->MODER &= ~(3U << (4 * 2));
+	GPIOA->MODER |=  (2U << (4 * 2));
+	GPIOA->AFR[0] &= ~(0xFU << (4 * 4));
+	GPIOA->AFR[0] |=  (6U << (4 * 4));
+
+	// PC7 = MCK, PC10 = CK, PC12 = SD (AF6)
+	GPIOC->MODER &= ~((3U << (7 * 2)) | (3U << (10 * 2)) | (3U << (12 * 2)));
+	GPIOC->MODER |=  ((2U << (7 * 2)) | (2U << (10 * 2)) | (2U << (12 * 2)));
+
+	GPIOC->AFR[0] &= ~(0xFU << (7 * 4));
+	GPIOC->AFR[0] |=  (6U << (7 * 4));
+
+	GPIOC->AFR[1] &= ~((0xFU << ((10 - 8) * 4)) | (0xFU << ((12 - 8) * 4)));
+	GPIOC->AFR[1] |=  ((6U << ((10 - 8) * 4)) | (6U << ((12 - 8) * 4)));
+
+	RCC->APB1ENR |= RCC_APB1ENR_SPI3EN;
+
+	SPI3->I2SCFGR = 0;
+
+	SPI3->I2SPR =
+		  SPI_I2SPR_MCKOE
+		| (3U << SPI_I2SPR_I2SDIV_Pos)
+		| SPI_I2SPR_ODD;
+
+	SPI3->I2SCFGR = 0;
+
+	SPI3->I2SCFGR =
+		  SPI_I2SCFGR_I2SMOD
+		| SPI_I2SCFGR_I2SCFG_1
+		| SPI_I2SCFGR_I2SSTD_0
+		| SPI_I2SCFGR_DATLEN_0   // 24-bit data length
+		| SPI_I2SCFGR_CHLEN;     // 32-bit channel length
+
+	SPI3->I2SCFGR |= SPI_I2SCFGR_I2SE;
+}
+
 // --- I2C interface ---
 // DR - Data Register
 // SR - Status Register
@@ -169,19 +225,73 @@ uint8_t dac_reg_read(uint8_t reg) {
 	return data;
 }
 
+void codec_init(void)
+{
+    // Power down codec
+    dac_reg_write(0x02, 0x01);
+
+    // Clocking: auto detect MCLK
+    dac_reg_write(0x05, 0x81);
+
+    // Interface: I2S, 16-bit
+    dac_reg_write(0x06, 0x00);
+
+    // Headphone volume
+    dac_reg_write(0x20, 0x00); // left
+    dac_reg_write(0x21, 0x00); // right
+
+    // Analog power: headphone enabled
+    dac_reg_write(0x04, 0xAF);
+
+    // Activate codec
+    dac_reg_write(0x02, 0x9E);
+}
+
+#include <math.h>
+
+#define TABLE_SIZE 1024
+
+int16_t sine_table[TABLE_SIZE];
+
+void sine_init(void) {
+	for (int i = 0; i < TABLE_SIZE; i++) {
+		sine_table[i] =
+			(int16_t)(sinf(2.0f * 3.1415926f * i / TABLE_SIZE) * 20000.0f);
+	}
+}
+
 int main() {
 	pll_init();
 	leds_init();
 	dac_i2c_init();
+	codec_init();
 
-	uint8_t cid = dac_reg_read(0x01) & 0xf8;
-	GPIOD->ODR |= ((cid == 0xe0) << LEDS + 1);
+	plli2s_init();
+	spi3clk_init();
 
-	dac_reg_write(0x02, 0x9E);
-	uint8_t v = dac_reg_read(0x02);
-	GPIOD->ODR |= ((v == 0x9E) << LEDS + 2);
+	sine_init();
+
+	float step = 1 / 540.0f * 2.0f;
+	float index = 0.0f;
 
 	while (1) {
+		step += 0.00001f;
+		if (step > 0.01f) step = 0.0f;
 		blink();
+
+		if (SPI3->SR & SPI_SR_TXE) {
+			int16_t sample = sine_table[(uint32_t)(index * TABLE_SIZE)];
+
+			SPI3->DR = sample;   // left
+
+			while (!(SPI3->SR & SPI_SR_TXE));
+			SPI3->DR = sample;   // right
+
+			index += step;
+			if (index > 1.0f) index = 0.0f;
+
+			if (index >= TABLE_SIZE)
+				index -= TABLE_SIZE;
+		}
 	}
 }
