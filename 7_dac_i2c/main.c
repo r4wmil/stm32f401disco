@@ -113,6 +113,7 @@ void i2c_wait_byte() {
 }
 
 void i2c_start() {
+	i2c_wait_byte();
 	I2C1->CR1 |= I2C_CR1_START;
 	while (!(I2C1->SR1 & I2C_SR1_SB));
 }
@@ -138,6 +139,14 @@ void i2c_stop() {
 	I2C1->CR1 |= I2C_CR1_STOP;
 }
 
+void dac_reg_write(uint8_t reg, uint8_t val) {
+	i2c_start();
+	i2c_write_addr(I2C_ADDR & ~1U);
+	i2c_write(reg);
+	i2c_write(val);
+	i2c_stop();
+}
+
 uint8_t dac_reg_read(uint8_t reg) {
 	uint8_t data;
 
@@ -145,7 +154,7 @@ uint8_t dac_reg_read(uint8_t reg) {
 
 	i2c_start();
 	i2c_write_addr(I2C_ADDR & ~1U);
-	i2c_write(0x01);
+	i2c_write(reg);
 	i2c_stop();
 
 	i2c_start();
@@ -169,6 +178,10 @@ int main() {
 
 	uint8_t cid = dac_reg_read(0x01) & 0xf8;
 	GPIOD->ODR |= ((cid == 0xe0) << LEDS + 1);
+
+	dac_reg_write(0x02, 0x9E);
+	uint8_t v = dac_reg_read(0x02);
+	GPIOD->ODR |= ((v == 0x9E) << LEDS + 2);
 
 	while (1) {
 		blink();
