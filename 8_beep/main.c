@@ -22,12 +22,12 @@ void pll_init() {
 	FLASH->ACR = FLASH_ACR_LATENCY_2WS;
 
 	RCC->CFGR =
-		  RCC_CFGR_HPRE_DIV1
+		RCC_CFGR_HPRE_DIV1
 		| RCC_CFGR_PPRE1_DIV2
 		| RCC_CFGR_PPRE2_DIV1;
 
 	RCC->PLLCFGR =
-		  (8U   << RCC_PLLCFGR_PLLM_Pos)
+		(8U   << RCC_PLLCFGR_PLLM_Pos)
 		| (336U << RCC_PLLCFGR_PLLN_Pos)
 		| (1U   << RCC_PLLCFGR_PLLP_Pos)
 		| (7U   << RCC_PLLCFGR_PLLQ_Pos)
@@ -44,15 +44,15 @@ void pll_init() {
 }
 
 void plli2s_init() {
-  // VCOI2S = HSE / PLLM * PLLI2N
-  // I2SCLK = VCOI2S / PLLI2R
-  // I2SCLK = 8 MHz / 8 * 271 / 2 = 135.5 Mhz
-  RCC->PLLI2SCFGR =
-      (271U << RCC_PLLI2SCFGR_PLLI2SN_Pos)
-    | (2U   << RCC_PLLI2SCFGR_PLLI2SR_Pos);
+	// VCOI2S = HSE / PLLM * PLLI2N
+	// I2SCLK = VCOI2S / PLLI2R
+	// I2SCLK = 8 MHz / 8 * 271 / 2 = 135.5 Mhz
+	RCC->PLLI2SCFGR =
+		(271U << RCC_PLLI2SCFGR_PLLI2SN_Pos)
+		| (2U   << RCC_PLLI2SCFGR_PLLI2SR_Pos);
 
-  RCC->CR |= RCC_CR_PLLI2SON;
-  while (!(RCC->CR & RCC_CR_PLLI2SRDY));
+	RCC->CR |= RCC_CR_PLLI2SON;
+	while (!(RCC->CR & RCC_CR_PLLI2SRDY));
 }
 
 void spi3clk_init() {
@@ -84,16 +84,18 @@ void spi3clk_init() {
 	// ODD = 0
 	// I2SDIV ~= 6
 	SPI3->I2SPR =
-		  SPI_I2SPR_MCKOE
+		SPI_I2SPR_MCKOE
 		| (6U << SPI_I2SPR_I2SDIV_Pos);
 
 	SPI3->I2SCFGR = 0;
 
+	// I2SMOD - I2S MODe enable (SPI3 as I2S)
+	// I2SCFGR_1 - I2S ConFiGuRation bit 10b
+	// I2SCFGR_0 - I2S ConFiGuRation bit 01b
 	SPI3->I2SCFGR =
-		  SPI_I2SCFGR_I2SMOD
+		SPI_I2SCFGR_I2SMOD
 		| SPI_I2SCFGR_I2SCFG_1
-		| SPI_I2SCFGR_I2SSTD_0
-		| SPI_I2SCFGR_CHLEN;     // 32-bit channel length
+		| SPI_I2SCFGR_I2SSTD_0;
 
 	SPI3->I2SCFGR |= SPI_I2SCFGR_I2SE;
 }
@@ -224,26 +226,20 @@ uint8_t dac_reg_read(uint8_t reg) {
 	return data;
 }
 
-void codec_init(void)
-{
-    // Power down codec
-    dac_reg_write(0x02, 0x01);
-
-    // Clocking: auto detect MCLK
-    dac_reg_write(0x05, 0x81);
-
-    // Interface: I2S, 16-bit
-    dac_reg_write(0x06, 0x00);
-
-    // Headphone volume
-    dac_reg_write(0x20, 0x00); // left
-    dac_reg_write(0x21, 0x00); // right
-
-    // Analog power: headphone enabled
-    dac_reg_write(0x04, 0xAF);
-
-    // Activate codec
-    dac_reg_write(0x02, 0x9E);
+void codec_init(void) {
+	// Power down codec
+	dac_reg_write(0x02, 0x01);
+	// Auto-detect MCLK
+	dac_reg_write(0x05, 0x81);
+	// Interface: I2S, 16-bit
+	dac_reg_write(0x06, 0x00);
+	// Headphone volume
+	dac_reg_write(0x20, (int8_t)0);
+	dac_reg_write(0x21, (int8_t)0);
+	// Analog power: headphone enabled
+	dac_reg_write(0x04, 0xAF);
+	// Activate codec
+	dac_reg_write(0x02, 0x9E);
 }
 
 #include <math.h>
@@ -266,7 +262,7 @@ void SPI3_IRQHandler(void)
 	GPIOD->ODR |= (0x1U << LEDS + 1);
 	if (SPI3->SR & SPI_SR_TXE) {
 		SPI3->DR = sine_table[phase];
-		phase = (phase + 2) & (TABLE_SIZE - 1);
+		phase = (phase + 3) & (TABLE_SIZE - 1);
 	}
 	GPIOD->ODR &= ~(0x1U << LEDS + 1);
 }
