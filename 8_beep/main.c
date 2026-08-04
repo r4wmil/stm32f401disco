@@ -44,14 +44,11 @@ void pll_init() {
 }
 
 void plli2s_init() {
-  // VCOI2S = HSE / PLLM * PLLI2N =
-  //        = 8 MHz / 8 * 192 =
-  //        = 192 MHz
-  // I2SCLK = VCOI2S / PLLI2R =
-  //        = 192 MHz / 4 =
-  //        = 48 MHz
+  // VCOI2S = HSE / PLLM * PLLI2N
+  // I2SCLK = VCOI2S / PLLI2R
+  // I2SCLK = 8 MHz / 8 * 271 / 2 = 135.5 Mhz
   RCC->PLLI2SCFGR =
-      (192U << RCC_PLLI2SCFGR_PLLI2SN_Pos)
+      (271U << RCC_PLLI2SCFGR_PLLI2SN_Pos)
     | (2U   << RCC_PLLI2SCFGR_PLLI2SR_Pos);
 
   RCC->CR |= RCC_CR_PLLI2SON;
@@ -82,10 +79,13 @@ void spi3clk_init() {
 
 	SPI3->I2SCFGR = 0;
 
+	// F_s = I2SCLK / [256 * (2 * I2SDIV + ODD)]
+	// 2 * I2SDIV + ODD = I2SCLK / (256 * F_s)
+	// ODD = 0
+	// I2SDIV ~= 6
 	SPI3->I2SPR =
 		  SPI_I2SPR_MCKOE
-		| (3U << SPI_I2SPR_I2SDIV_Pos)
-		| SPI_I2SPR_ODD;
+		| (6U << SPI_I2SPR_I2SDIV_Pos);
 
 	SPI3->I2SCFGR = 0;
 
@@ -275,7 +275,7 @@ int main() {
 	float index = 0.0f;
 
 	while (1) {
-		step += 0.00001f;
+		step += 0.0000001f;
 		if (step > 0.01f) step = 0.0f;
 		blink();
 
