@@ -93,7 +93,6 @@ void spi3clk_init() {
 		  SPI_I2SCFGR_I2SMOD
 		| SPI_I2SCFGR_I2SCFG_1
 		| SPI_I2SCFGR_I2SSTD_0
-		| SPI_I2SCFGR_DATLEN_0   // 24-bit data length
 		| SPI_I2SCFGR_CHLEN;     // 32-bit channel length
 
 	SPI3->I2SCFGR |= SPI_I2SCFGR_I2SE;
@@ -256,8 +255,20 @@ int16_t sine_table[TABLE_SIZE];
 void sine_init(void) {
 	for (int i = 0; i < TABLE_SIZE; i++) {
 		sine_table[i] =
-			(int16_t)(sinf(2.0f * 3.1415926f * i / TABLE_SIZE) * 20000.0f);
+			(int16_t)(sinf(2.0f * 3.1415926f * i / TABLE_SIZE) * 10000.0f);
 	}
+}
+
+volatile uint32_t phase = 0;
+
+void SPI3_IRQHandler(void)
+{
+	GPIOD->ODR |= (0x1U << LEDS + 1);
+	if (SPI3->SR & SPI_SR_TXE) {
+		SPI3->DR = sine_table[phase];
+		phase = (phase + 2) & (TABLE_SIZE - 1);
+	}
+	GPIOD->ODR &= ~(0x1U << LEDS + 1);
 }
 
 int main() {
@@ -271,27 +282,10 @@ int main() {
 
 	sine_init();
 
-	float step = 1 / 540.0f * 2.0f;
-	float index = 0.0f;
+	NVIC_EnableIRQ(SPI3_IRQn);
+	SPI3->CR2 |= SPI_CR2_TXEIE;
 
 	while (1) {
-		step += 0.0000001f;
-		if (step > 0.01f) step = 0.0f;
 		blink();
-
-		if (SPI3->SR & SPI_SR_TXE) {
-			int16_t sample = sine_table[(uint32_t)(index * TABLE_SIZE)];
-
-			SPI3->DR = sample;   // left
-
-			while (!(SPI3->SR & SPI_SR_TXE));
-			SPI3->DR = sample;   // right
-
-			index += step;
-			if (index > 1.0f) index = 0.0f;
-
-			if (index >= TABLE_SIZE)
-				index -= TABLE_SIZE;
-		}
 	}
 }
