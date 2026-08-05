@@ -250,29 +250,45 @@ void codec_init(void) {
 
 int16_t audio_buf[AUDIO_BUF];
 
-void dma1_s1_init() {
+void dma1_s5_init() {
+	// DMA - Direct Memory Access
+
 	RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
 	DMA1_Stream5->CR = 0;
 	while (DMA1_Stream5->CR & DMA_SxCR_EN);
+	// - wait until disabled
 
+	// PAR - Peripheral Address Register
 	DMA1_Stream5->PAR  = (uint32_t)&SPI3->DR;
+	// M0AR - Memory 0 Address Register
 	DMA1_Stream5->M0AR = (uint32_t)audio_buf;
+	// NDTR - Number of Data to Transfer Register
 	DMA1_Stream5->NDTR = AUDIO_BUF;
 
+	// SxCR - Stream x Control Register
+	// DIR_0 - data transfer DIRection bit 0
+	// MINC - Memory INCrement
+	// CIRC - CIRCular mode
+	// PSIZE_0 - Peripheral data SIZE bit 0
+	// MSIZE_0 - Memory data SIZE bit 0
+	// HTIE - Half Transfer Interrupt Enable
+	// ICIE - Transfer Complete Interrupt Enable
 	DMA1_Stream5->CR =
-		(0 << DMA_SxCR_CHSEL_Pos) |
-		DMA_SxCR_DIR_0 |
-		DMA_SxCR_MINC |
-		DMA_SxCR_CIRC |
-		DMA_SxCR_PSIZE_0 |
-		DMA_SxCR_MSIZE_0 |
-		DMA_SxCR_PL_1 |
-		DMA_SxCR_HTIE |
-		DMA_SxCR_TCIE;
+		  (0 << DMA_SxCR_CHSEL_Pos)
+		| DMA_SxCR_DIR_0
+		| DMA_SxCR_MINC
+		| DMA_SxCR_CIRC
+		| DMA_SxCR_PSIZE_0
+		| DMA_SxCR_MSIZE_0
+		| DMA_SxCR_PL_1
+		| DMA_SxCR_HTIE
+		| DMA_SxCR_TCIE;
 
+	// NVIC - Nested Vector Interrupt Controller
 	NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
+	// TXDMAEN - Transfer DMA ENable
 	SPI3->CR2 |= SPI_CR2_TXDMAEN;
 	DMA1_Stream5->CR |= DMA_SxCR_EN;
 }
@@ -321,7 +337,7 @@ int main() {
 
 	plli2s_init();
 	spi3clk_init();
-	dma1_s1_init();
+	dma1_s5_init();
 
 	sine_init();
 
