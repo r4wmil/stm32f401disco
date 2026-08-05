@@ -10,7 +10,8 @@ void leds_init() {
 
 void blink() {
 	const uint32_t led_max_count = 500000;
-	uint32_t led_count = (led_count + 1) % led_max_count;
+	static uint32_t led_count = 0;
+	led_count = (led_count + 1) % led_max_count;
 	GPIOD->ODR &= ~(0x1U << LEDS);
 	GPIOD->ODR |= ((led_count < led_max_count / 2) << LEDS);
 }
