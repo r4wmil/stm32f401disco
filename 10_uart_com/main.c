@@ -5,6 +5,7 @@
 // None - flow control
 
 #include "stm32f4xx.h"
+#include <stdio.h>
 
 #define LED 12
 
@@ -32,15 +33,25 @@ void init_usart2() {
 	USART2->CR1 = USART_CR1_TE | USART_CR1_UE;
 }
 
+void usart2_send(uint8_t b) {
+	while (!(USART2->SR & USART_SR_TXE));
+	USART2->DR = b;
+}
+
+int _write(int file, char *ptr, int len) {
+	for (int i = 0; i < len; i++) {
+		usart2_send(ptr[i]);
+	}
+	return len;
+}
+
 int main(void) {
 
 	init_leds();
 	init_usart2();
 
-	uint8_t c = 0;
 	while (1) {
-		while (!(USART2->SR & USART_SR_TXE));
-		USART2->DR = c++;
+		printf("halo\r\n");
 		GPIOD->ODR ^= (1U << LED + 0);
 		for (volatile uint32_t i = 0; i < 50000; i++);
 	}
