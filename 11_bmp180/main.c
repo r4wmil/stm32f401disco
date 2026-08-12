@@ -169,7 +169,56 @@ int _write(int file, char *ptr, int len) {
 
 // --- MAIN ---
 
-uint8_t buf[22];
+int32_t bmp180_pressure(void) {
+	// Calibration coefficients
+	int16_t AC1 = (i2c_reg_read(0xAA) << 8) | i2c_reg_read(0xAB);
+	int16_t AC2 = (i2c_reg_read(0xAC) << 8) | i2c_reg_read(0xAD);
+	int16_t AC3 = (i2c_reg_read(0xAE) << 8) | i2c_reg_read(0xAF);
+	uint16_t AC4 = (i2c_reg_read(0xB0) << 8) | i2c_reg_read(0xB1);
+	uint16_t AC5 = (i2c_reg_read(0xB2) << 8) | i2c_reg_read(0xB3);
+	uint16_t AC6 = (i2c_reg_read(0xB4) << 8) | i2c_reg_read(0xB5);
+	int16_t B1  = (i2c_reg_read(0xB6) << 8) | i2c_reg_read(0xB7);
+	int16_t B2  = (i2c_reg_read(0xB8) << 8) | i2c_reg_read(0xB9);
+	int16_t MB  = (i2c_reg_read(0xBA) << 8) | i2c_reg_read(0xBB);
+	int16_t MC  = (i2c_reg_read(0xBC) << 8) | i2c_reg_read(0xBD);
+	int16_t MD  = (i2c_reg_read(0xBE) << 8) | i2c_reg_read(0xBF);
+
+	// Temperature
+	i2c_reg_write(0xF4, 0x2E);
+	for (volatile int i = 0; i < 100000; i++);
+	int32_t UT = (i2c_reg_read(0xF6) << 8) | i2c_reg_read(0xF7);
+
+	int32_t X1 = ((UT - AC6) * AC5) >> 15;
+	int32_t X2 = (MC << 11) / (X1 + MD);
+	int32_t B5 = X1 + X2;
+
+	// Pressure, OSS = 0
+	i2c_reg_write(0xF4, 0x34);
+	for (volatile int i = 0; i < 100000; i++);
+	int32_t UP = (i2c_reg_read(0xF6) << 8) | i2c_reg_read(0xF7);
+
+	int32_t B6 = B5 - 4000;
+	X1 = (B2 * (B6 * B6 >> 12)) >> 11;
+	X2 = (AC2 * B6) >> 11;
+	int32_t X3 = X1 + X2;
+	int32_t B3 = (((AC1 * 4 + X3) + 2) / 4);
+
+	X1 = (AC3 * B6) >> 13;
+	X2 = (B1 * (B6 * B6 >> 12)) >> 16;
+	X3 = ((X1 + X2) + 2) >> 2;
+
+	uint32_t B4 = (AC4 * (uint32_t)(X3 + 32768)) >> 15;
+	uint32_t B7 = ((uint32_t)UP - B3) * 50000;
+
+	int32_t p = (B7 < 0x80000000) ?
+		(B7 * 2) / B4 : (B7 / B4) * 2;
+
+	X1 = (p >> 8) * (p >> 8);
+	X1 = (X1 * 3038) >> 16;
+	X2 = (-7357 * p) >> 16;
+
+	return p + ((X1 + X2 + 3791) >> 4);
+}
 
 int main(void) {
 
@@ -178,11 +227,11 @@ int main(void) {
 	init_i2c();
 
 	printf("\033[2J\033[H");
-	printf("hello\r\n");
+	printf("%x\r\n", i2c_reg_read(0xD0));
 	while (1) {
-		printf("%x\r\n", i2c_reg_read(0xD0));
+		printf("pressure: %ld pa\r\n", bmp180_pressure());
 		//for (int i = 0; i < 22; i++) printf("%x\r\n", buf[i]);
 		GPIOD->ODR ^= (1U << LED + 0);
-		for (volatile uint32_t i = 0; i < 500000; i++);
+		for (volatile uint32_t i = 0; i < 800000; i++);
 	}
 }
