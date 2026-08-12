@@ -96,6 +96,40 @@ void i2c_stop() {
 	I2C1->CR1 |= I2C_CR1_STOP;
 }
 
+#define I2C_ADDR 0xEE
+
+void i2c_reg_write(uint8_t reg, uint8_t val) {
+	i2c_start();
+	i2c_write_addr(I2C_ADDR & ~1U);
+	i2c_write(reg);
+	i2c_write(val);
+	i2c_stop();
+}
+
+uint8_t i2c_reg_read(uint8_t reg) {
+	uint8_t data;
+
+	i2c_wait_byte();
+
+	i2c_start();
+	i2c_write_addr(I2C_ADDR & ~1U);
+	i2c_write(reg);
+	i2c_stop();
+
+	i2c_start();
+	i2c_write_addr(I2C_ADDR | 1U);
+
+	I2C1->CR1 &= ~I2C_CR1_ACK;
+
+	i2c_stop();
+
+	i2c_read(&data);
+
+	I2C1->CR1 |= I2C_CR1_ACK;
+
+	return data;
+}
+
 // --- USART2 ---
 
 void init_usart2() {
@@ -135,22 +169,6 @@ int _write(int file, char *ptr, int len) {
 
 // --- MAIN ---
 
-//uint8_t bmp180_chip_id() {
-//	uint8_t id;
-//
-//	i2c_start();
-//	i2c_write_addr(0xEE);  // BMP180 write
-//	i2c_write(0xD0);       // chip ID register
-//
-//	i2c_start();
-//	i2c_write_addr(0xEF);  // BMP180 read
-//	i2c_read(&id);
-//
-//	i2c_stop();
-//
-//	return id;
-//}
-
 uint8_t buf[22];
 
 int main(void) {
@@ -159,13 +177,11 @@ int main(void) {
 	init_usart2();
 	init_i2c();
 
-	int i = 0;
 	printf("\033[2J\033[H");
+	printf("hello\r\n");
 	while (1) {
-		//bmp180_calibr(buf);
+		printf("%x\r\n", i2c_reg_read(0xD0));
 		//for (int i = 0; i < 22; i++) printf("%x\r\n", buf[i]);
-		//printf("\r\n");
-		printf("%d\r\n", i++);
 		GPIOD->ODR ^= (1U << LED + 0);
 		for (volatile uint32_t i = 0; i < 500000; i++);
 	}
