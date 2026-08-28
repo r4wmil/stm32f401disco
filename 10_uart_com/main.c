@@ -30,12 +30,16 @@ void init_usart2() {
 	// UE - USART Enable
 	// 16 MHz / 9600 baud rate
 	USART2->BRR = 16000000 / 9600;
-	USART2->CR1 = USART_CR1_TE | USART_CR1_UE;
+	USART2->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
 }
 
 void usart2_send(uint8_t b) {
 	while (!(USART2->SR & USART_SR_TXE));
 	USART2->DR = b;
+}
+
+uint8_t usart2_recv() {
+	return !(USART2->SR & USART_SR_RXNE) ? 0x0 : USART2->DR;
 }
 
 int _write(int file, char *ptr, int len) {
@@ -51,6 +55,9 @@ int main(void) {
 	init_usart2();
 
 	while (1) {
+		uint8_t b = usart2_recv();
+		if (b == '\r')
+			GPIOD->ODR ^= (1U << LED + 1);
 		printf("halo\r\n");
 		GPIOD->ODR ^= (1U << LED + 0);
 		for (volatile uint32_t i = 0; i < 50000; i++);
