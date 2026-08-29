@@ -432,3 +432,18 @@ g_pfnVectors:
 
    .weak      SPI4_IRQHandler                  
    .thumb_set SPI4_IRQHandler,Default_Handler 
+
+   // Added for FreeRTOS
+
+   .weak SVC_Handler
+   .thumb_set SVC_Handler, vPortSVCHandler
+
+   .weak PendSV_Handler
+   .thumb_set PendSV_Handler, xPortPendSVHandler
+
+   .weak SysTick_Handler
+   .thumb_set SysTick_Handler, xPortSysTickHandler
+
+   .extern vPortSVCHandler
+   .extern xPortPendSVHandler
+   .extern xPortSysTickHandler
