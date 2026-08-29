@@ -7,12 +7,14 @@ make EXAMPLE=1_blink
 # 3_pwm_leds: PWM with leds
 # 4_pwm_mul: PWM with multiple leds
 # 5_button: button example with debounce
+# e. t. c
+# ...
 ```
 
 ## Requirments
 ```txt
 arm-none-eabi-gcc
-arm-none-eabi-gdb
+arm-none-eabi-gdb / gdb-multiarch
 arm-none-eabi-newlib
 stlink
 openocd
