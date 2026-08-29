@@ -11,8 +11,9 @@ CFLAGS += -I. -I/usr/arm-none-eabi/include
 CFLAGS += -I./Drivers/CMSIS/Core/Include -I./Drivers/CMSIS/STM32F4xx/Include
 CFLAGS += -I$(EXAMPLE)
 
+STARTUP = ./startup_stm32f401xc.s
+
 SRCS = $(EXAMPLE)/main.c
-SRCS += ./startup_stm32f401xc.s
 SRCS += ./system_stm32f4xx.c
 
 LDFLAGS = -T ./STM32F401CCUX_FLASH.ld
@@ -22,6 +23,7 @@ ELF = $(OUT_DIR)/binary.elf
 BIN = $(OUT_DIR)/binary.bin
 
 ifeq ($(EXAMPLE),12_rtos)
+	STARTUP = ./startup_freertos.s
 	CFLAGS += -g3
 	CFLAGS += -IFreeRTOS/include
 	CFLAGS += -IFreeRTOS/portable/GCC/ARM_CM4F
@@ -32,6 +34,8 @@ ifeq ($(EXAMPLE),12_rtos)
 		FreeRTOS/portable/GCC/ARM_CM4F/port.c \
 		FreeRTOS/portable/MemMang/heap_4.c
 endif
+
+SRCS += $(STARTUP)
 
 all: $(OUT_DIR) $(BIN)
 	$(STFLASH) --connect-under-reset write $(BIN) 0x08000000
