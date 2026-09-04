@@ -21,7 +21,7 @@ ELF = $(OUT_DIR)/binary.elf
 BIN = $(OUT_DIR)/binary.bin
 
 # --- RTOS NEEDS SPECIAL LINKING ---
-ifeq ($(EXAMPLE),12_rtos)
+ifeq ($(EXAMPLE),12_freertos)
 	STARTUP = ./startup_freertos.s
 	CFLAGS += -g3
 	CFLAGS += -IFreeRTOS/include
