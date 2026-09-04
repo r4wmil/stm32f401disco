@@ -1,4 +1,5 @@
 #include "stm32f4xx.h"
+#include <stdbool.h>
 
 #define BTN 0
 #define LED1 12
