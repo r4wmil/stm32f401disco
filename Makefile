@@ -1,5 +1,3 @@
-# TODO: building without need to clear out/* by hand
-
 EXAMPLE=1_blink
 
 CC = arm-none-eabi-gcc
@@ -50,7 +48,7 @@ APP1_BIN = $(OUT_DIR)/app1.bin
 APP2_ELF = $(OUT_DIR)/app2.elf
 APP2_BIN = $(OUT_DIR)/app2.bin
 
-all: $(OUT_DIR) $(BOOT_BIN) $(APP1_BIN) $(APP2_BIN)
+all: clean $(OUT_DIR) $(BOOT_BIN) $(APP1_BIN) $(APP2_BIN)
 	$(STFLASH) --connect-under-reset write $(BOOT_BIN) 0x08000000
 	$(STFLASH) --connect-under-reset write $(APP1_BIN) 0x08008000
 	$(STFLASH) --connect-under-reset write $(APP2_BIN) 0x08020000
@@ -79,7 +77,7 @@ $(APP2_BIN): $(APP2_ELF)
 else
 # --- DEFAULT PROJECT BUILD ---
 SRCS += $(STARTUP)
-all: $(OUT_DIR) $(BIN)
+all: clean $(OUT_DIR) $(BIN)
 	$(STFLASH) --connect-under-reset write $(BIN) 0x08000000
 
 $(ELF): $(SRCS)
