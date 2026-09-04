@@ -24,8 +24,8 @@ openocd
 - `./STM32F401CCUX_FLASH.ld` - STM32CubeF4 -> ./Projects/STM32F401-Discovery/Examples/GPIO/GPIO_EXTI/STM32CubeIDE/STM32F401CCUX_FLASH.ld
 - `./startup_stm32f401xc.s` - STM32CubeF4 -> ./Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
 - `./system_stm32f4xx.c` - STM32CubeF4 -> ./Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/
-- `./CMSIS/Core/Include` - STM32CubeF4 -> ./Drivers/CMSIS/Core/Include
-- `./CMSIS/Include` - STM32CubeF4 -> ./Drivers/CMSIS/Core/Include
+- `./Drivers/CMSIS/Core/Include` - STM32CubeF4 -> ./Drivers/CMSIS/Include
+- `./Drivers/CMSIS/Device/ST/STM32F4xx` - STM32CubeF4 -> ./Drivers/STM32F4xx
 
 ## Specs
 - F - general purpose
