@@ -40,6 +40,7 @@ openocd
 
 STM32 naming conventions:
 - https://www.compilenrun.com/docs/iot/stm32/stm32-fundamentals/stm32-naming-convention/
+CMSIS - Cortex Microcontroller Software Interface Standart
 
 ## Misc
 ### ARM toolchain on MSYS2
@@ -49,4 +50,12 @@ pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-gdb
 pacman -S mingw-w64-ucrt-x86_64-stlink
 ```
 
-CMSIS - Cortex Microcontroller Software Interface Standart
+### WSL
+```
+winget.exe install --interactive --exact dorssel.usbipd-win
+alias usbipd='/mnt/c/Program\ Files/usbipd-win/usbipd.exe'
+usbipd list
+export BUSID=<BUSID>
+powershell.exe -Command "Start-Process 'C:\Program Files\usbipd-win\usbipd.exe' -Verb RunAs -ArgumentList 'bind --busid $BUSID'"
+powershell.exe -Command "Start-Process 'C:\Program Files\usbipd-win\usbipd.exe' -Verb RunAs -ArgumentList 'attach --wsl --busid $BUSID'"
+```
