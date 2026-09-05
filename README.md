@@ -59,3 +59,30 @@ export BUSID=<BUSID>
 powershell.exe -Command "Start-Process 'C:\Program Files\usbipd-win\usbipd.exe' -Verb RunAs -ArgumentList 'bind --busid $BUSID'"
 powershell.exe -Command "Start-Process 'C:\Program Files\usbipd-win\usbipd.exe' -Verb RunAs -ArgumentList 'attach --wsl --busid $BUSID'"
 ```
+
+### GDB
+Separate window:
+```
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+```
+```
+arm-none-eabi-gdb out/binary.elf
+target remote :3333
+monitor reset halt
+break main
+continue
+# - or `c`
+next
+# - or `n`
+
+# notes
+delete 12
+# - delete bp
+disable
+enable
+# - disable/enable bps for a while
+
+# gui
+layout src
+# - or ctrl+x a
+```
