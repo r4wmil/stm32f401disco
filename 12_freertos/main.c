@@ -1,8 +1,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32f4xx.h"
+#include <stdio.h>
 
 #define LEDS 12
+
+// --- SYSTEM ---
 
 void leds_init() {
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
@@ -80,27 +83,83 @@ void mco_init() {
 	RCC->CFGR |= (3U << RCC_CFGR_MCO1_Pos);  // PLL
 }
 
-void task1(void *arg) {
+// --- USART ---
+
+void usart2_init() {
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
+	RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+
+	GPIOD->MODER &= ~((3U << (5 * 2)) | (3U << (6 * 2)));
+	GPIOD->MODER |=  ((2U << (5 * 2)) | (2U << (6 * 2)));
+
+	GPIOD->AFR[0] &= ~(0xFU << (5 * 4) | (0xFU << (6 * 4)));
+	GPIOD->AFR[0] |=  (0x7U << (5 * 4) | (0x7U << (6 * 4)));
+
+	// BRR - Baud Rate Register
+	// TE - Transmitter Enable
+	// UE - USART Enable
+	// 42 MHz (APB1 spped) / 9600 baud rate
+	USART2->BRR = 42000000 / 9600;
+	USART2->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+}
+
+void usart2_send(uint8_t b) {
+	while (!(USART2->SR & USART_SR_TXE));
+	USART2->DR = b;
+}
+
+uint8_t usart2_recv() {
+	return !(USART2->SR & USART_SR_RXNE) ? 0x0 : USART2->DR;
+}
+
+int _write(int file, char *ptr, int len) {
+	for (int i = 0; i < len; i++) {
+		usart2_send(ptr[i]);
+	}
+	return len;
+}
+
+// --- TASKS ---
+
+void task_blink1(void *arg) {
 	while (1) {
 		GPIOD->ODR ^= (0x1U << (LEDS + 0));
 		vTaskDelay(pdMS_TO_TICKS(1000));
 	}
 }
 
-void task2(void *arg) {
+void task_blink2(void *arg) {
 	while (1) {
 		GPIOD->ODR ^= (0x1U << (LEDS + 1));
 		vTaskDelay(pdMS_TO_TICKS(2000));
 	}
 }
 
+#define BUF_SIZE 256
+
+void task_com(void *arg) {
+	while (1) {
+		uint8_t b = usart2_recv();
+		if (b) {
+			usart2_send(b);
+			if (b == '\r') usart2_send('\n');
+		}
+		GPIOD->ODR ^= (1U << LEDS + 2);
+		vTaskDelay(pdMS_TO_TICKS(50));
+	}
+}
+
+// --- MAIN ---
+
 int main(void) {
 	pll_init();
 	mco_init();
 	leds_init();
+	usart2_init();
 	// xTaskCreate(fn, name, stack_depth, fn_params, priority, task_ptr);
-	xTaskCreate(task1, "task1", 128, NULL, 1, NULL);
-	xTaskCreate(task2, "task2", 128, NULL, 0, NULL);
+	xTaskCreate(task_blink1, "task_blink1", 128, NULL, 1, NULL);
+	xTaskCreate(task_blink2, "task_blink2", 128, NULL, 1, NULL);
+	xTaskCreate(task_com, "task_com", 2048, NULL, 1, NULL);
 	vTaskStartScheduler();
 	while (1);
 }
