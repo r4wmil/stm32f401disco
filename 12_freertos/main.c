@@ -2,6 +2,8 @@
 #include "task.h"
 #include "stm32f4xx.h"
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
 #define LEDS 12
 
@@ -137,15 +139,59 @@ void task_blink2(void *arg) {
 
 #define BUF_SIZE 256
 
-void task_com(void *arg) {
-	while (1) {
-		uint8_t b = usart2_recv();
-		if (b) {
+// --- COMMANDS ---
+
+typedef enum {
+	AM_COMMAND = 0,
+	AM_ECHO
+} app_mode_t;
+
+app_mode_t app_mode = 0;
+
+bool check_command(uint8_t* com, size_t len, uint8_t* buf) {
+	size_t com_len = strlen(com);
+	if (com_len != len) return false;
+	if (strncmp(com, buf, len)) return false;
+	return true;
+}
+
+void com_commands() {
+#define BUF_MAX 64
+	static uint8_t buf[BUF_MAX];
+	static size_t top = 0;
+	uint8_t b = usart2_recv();
+	if (b) {
+		if (b == '\r') {
+			if (app_mode == AM_ECHO) {
+				if (check_command("q", top, buf)) { app_mode = AM_COMMAND; return; }
+				printf("\r\n%.*s\r\n", (int)top, buf);
+				top = 0;
+				return;
+			}
+			//for (size_t i = 0; i < top; i++) usart2_send(buf[i]);
+			printf("\r\n");
+			if (check_command("echo", top, buf)) {
+				app_mode = AM_ECHO;
+				printf("echo mode enabled. type \"q\\n\" to quit\r\n");
+			} else {
+				printf("commands help:\r\n");
+				printf("'echo' - echo mode\r\n");
+			}
+			top = 0;
+		} else {
+			buf[top] = b;
+			if (top < BUF_MAX) { top++; }
 			usart2_send(b);
-			if (b == '\r') usart2_send('\n');
 		}
-		GPIOD->ODR ^= (1U << LEDS + 2);
-		vTaskDelay(pdMS_TO_TICKS(50));
+	}
+	GPIOD->ODR ^= (1U << LEDS + 2);
+	vTaskDelay(pdMS_TO_TICKS(50));
+}
+
+void task_com(void *arg) {
+	setvbuf(stdout, NULL, _IONBF, 0);
+	while (1) {
+		com_commands();
 	}
 }
 
@@ -157,9 +203,9 @@ int main(void) {
 	leds_init();
 	usart2_init();
 	// xTaskCreate(fn, name, stack_depth, fn_params, priority, task_ptr);
+	xTaskCreate(task_com, "task_com", 2048, NULL, 1, NULL);
 	xTaskCreate(task_blink1, "task_blink1", 128, NULL, 1, NULL);
 	xTaskCreate(task_blink2, "task_blink2", 128, NULL, 1, NULL);
-	xTaskCreate(task_com, "task_com", 2048, NULL, 1, NULL);
 	vTaskStartScheduler();
 	while (1);
 }
