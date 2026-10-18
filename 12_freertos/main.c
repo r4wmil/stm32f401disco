@@ -160,6 +160,7 @@ void com_commands() {
 	static uint8_t buf[BUF_MAX];
 	static size_t top = 0;
 	uint8_t b = usart2_recv();
+	bool is_reset = false;
 	if (b) {
 		if (b == '\r') {
 			if (app_mode == AM_ECHO) {
@@ -173,9 +174,13 @@ void com_commands() {
 			if (check_command("echo", top, buf)) {
 				app_mode = AM_ECHO;
 				printf("echo mode enabled. type \"q\\n\" to quit\r\n");
+			} else if (check_command("reset", top, buf)) {
+				printf("reseting...\r\n");
+				is_reset = true;
 			} else {
 				printf("commands help:\r\n");
 				printf("'echo' - echo mode\r\n");
+				printf("'reset' - system reset\r\n");
 			}
 			top = 0;
 		} else {
@@ -186,6 +191,9 @@ void com_commands() {
 	}
 	GPIOD->ODR ^= (1U << LEDS + 2);
 	vTaskDelay(pdMS_TO_TICKS(50));
+	if (is_reset) {
+		NVIC_SystemReset();
+	}
 }
 
 void task_com(void *arg) {
