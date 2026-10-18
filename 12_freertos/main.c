@@ -214,8 +214,13 @@ void com_commands() {
 			} else { com_help(); }
 			top = 0;
 		} else {
-			buf[top] = b;
-			if (top < BUF_MAX) { top++; }
+			if (b == '\b' || b == 0x7F) {
+				buf[top] = '\0';
+				if (top != 0) top--;
+			} else {
+				buf[top] = b;
+				if (top < BUF_MAX) { top++; }
+			}
 			usart2_send(b);
 		}
 	}
