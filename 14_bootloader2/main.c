@@ -8,9 +8,13 @@
 #include "helper.h"
 #undef  HELPER_IMPLEMENTATION
 
+#define CRC_IMPLEMENTATION
+#include "crc.h"
+#undef  CRC_IMPLEMENTATION
+
 enum {
 	STATE_PENDING = 0,
-	STATE_FLASHING
+	STATE_WAITING
 };
 
 int state = STATE_PENDING;
@@ -21,15 +25,41 @@ void state_pending(uint8_t b) {
 		usart2_send(0x1E);
 		GPIOD->ODR &= ~(1U << LEDS + 2);
 		sent = 1;
-		state = STATE_FLASHING;
+		state = STATE_WAITING;
 	}
 }
 
-void state_flashing(uint8_t b) {
+uint32_t getu32(const uint8_t* p) {
+    return (uint32_t)p[0]
+         | (uint32_t)p[1] << 8
+         | (uint32_t)p[2] << 16
+         | (uint32_t)p[3] << 24;
+}
+
+void precv(uint8_t b) {
+	GPIOD->ODR |=  (1U << LEDS + 1);
+	uint8_t lenb[4];
+	lenb[0] = b;
+	for (int i = 1; i < 4; i++) lenb[i] = usart2_recv();
+	uint32_t len = getu32(lenb);
+	uint8_t hashb[4];
+	for (int i = 0; i < 4; i++) hashb[i] = usart2_recv();
+	uint32_t hash = getu32(hashb);
+	uint8_t buf[1024];
+	for (int i = 0; i < len; i++) { buf[i] = usart2_recv(); }
+	uint32_t new_hash = crc_32(buf, len);
+	if (hash == new_hash) {
+		usart2_send(0xFA);
+		GPIOD->ODR |=  (1U << LEDS + 0);
+	}
+}
+
+void state_waiting(uint8_t b) {
 	if (b) {
-		usart2_send(b);
-		if (b == 0x12)
-			GPIOD->ODR |=  (1U << LEDS + 1);
+		precv(b);
+		state = STATE_PENDING;
+		//usart2_send(b);
+		//if (b == 0x12) GPIOD->ODR |=  (1U << LEDS + 1);
 	}
 }
 
@@ -38,8 +68,8 @@ void handle(uint8_t b) {
 	case STATE_PENDING:
 		state_pending(b);
 		break;
-	case STATE_FLASHING:
-		state_flashing(b);
+	case STATE_WAITING:
+		state_waiting(b);
 		break;
 	}
 }

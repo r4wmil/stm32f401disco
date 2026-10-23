@@ -9,8 +9,7 @@
 
 enum {
 	STATE_PENDING = 0,
-	STATE_SENDING,
-	STATE_DONE,
+	STATE_WAITING_ACK
 };
 
 int state = STATE_PENDING;
@@ -18,30 +17,36 @@ int state = STATE_PENDING;
 HANDLE clienth;
 
 int send_byte(unsigned char b) {
-    DWORD written;
-    return WriteFile(clienth, &b, 1, &written, NULL) && written == 1;
+	DWORD written;
+	return WriteFile(clienth, &b, 1, &written, NULL) && written == 1;
 }
 
 int send_bytes(uint8_t* buf, size_t len) {
-    DWORD written;
-    return WriteFile(clienth, buf, len, &written, NULL) && written == 1;
+	DWORD written;
+	return WriteFile(clienth, buf, len, &written, NULL) && written == 1;
+}
+
+void putu32(uint8_t* p, uint32_t v) {
+	p[0] = (v & 0x000000FF) >>  0;
+	p[1] = (v & 0x0000FF00) >>  8;
+	p[2] = (v & 0x00FF0000) >> 16;
+	p[3] = (v & 0xFF000000) >> 24;
 }
 
 void state_pending(uint8_t b) {
 	if (b == 0x1E) {
 		printf("Sending...\n");
-		uint8_t bytes[4];
-		bytes[0] = 0x12;
-		bytes[1] = 0x34;
-		bytes[2] = 0x56;
-		send_bytes(bytes, 3);
-		state = STATE_SENDING;
+		uint8_t text[] = "This is a test text we trying to send!!!";
+		size_t text_len = strlen(text);
+		uint32_t hash = crc_32(text, text_len);
+		printf("hash=%08X\n", hash);
+		uint8_t buf[1024];
+		putu32(buf + 1, text_len);
+		putu32(buf + 5, hash);
+		memcpy(buf + 9, text, text_len);
+		send_bytes(buf, text_len + 9);
+		state = STATE_WAITING_ACK;
 	}
-}
-
-void state_sending(uint8_t b) {
-	if (b != 0)
-		printf("%02X ", b);
 }
 
 void handler(uint8_t b) {
@@ -49,8 +54,8 @@ void handler(uint8_t b) {
 	case STATE_PENDING:
 		state_pending(b);
 		break;
-	case STATE_SENDING:
-		state_sending(b);
+	case STATE_WAITING_ACK:
+		if (b == 0xFA) { printf("Hash check successful."); }
 		break;
 	}
 }
