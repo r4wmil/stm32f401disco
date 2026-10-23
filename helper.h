@@ -116,7 +116,8 @@ void usart2_send(uint8_t b) {
 }
 
 uint8_t usart2_recv() {
-	return !(USART2->SR & USART_SR_RXNE) ? 0x0 : USART2->DR;
+	while (!(USART2->SR & USART_SR_RXNE));
+	return USART2->DR;
 }
 
 int _write(int file, char *ptr, int len) {
