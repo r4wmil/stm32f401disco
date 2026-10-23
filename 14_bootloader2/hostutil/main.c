@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define CRC_IMPLEMENTATION
+#include "crc.h"
+#undef  CRC_IMPLEMENTATION
+
 enum {
 	STATE_PENDING = 0,
 	STATE_SENDING,
@@ -26,7 +30,7 @@ int send_bytes(uint8_t* buf, size_t len) {
 void state_pending(uint8_t b) {
 	if (b == 0x1E) {
 		printf("Sending...\n");
-		uint8_t lenb[4];
+		uint8_t bytes[4];
 		bytes[0] = 0x12;
 		bytes[1] = 0x34;
 		bytes[2] = 0x56;
@@ -52,6 +56,10 @@ void handler(uint8_t b) {
 }
 
 int main(int argc, char** argv) {
+
+	char crc_test[] = "testTest";
+	printf("crc_test_hash=%08X\n", crc_32(crc_test, strlen(crc_test)));
+
 	char name[16];
 	int avail = -1;
 	for (int i = 1; i <= 256; i++) {
