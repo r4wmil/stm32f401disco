@@ -7,6 +7,10 @@
 #include "crc.h"
 #undef  CRC_IMPLEMENTATION
 
+#define BINSER_IMPLEMENTATION
+#include "binser.h"
+#undef  BINSER_IMPLEMENTATION
+
 enum {
 	STATE_PENDING = 0,
 	STATE_WAITING_ACK
@@ -26,13 +30,6 @@ int send_bytes(uint8_t* buf, size_t len) {
 	return WriteFile(clienth, buf, len, &written, NULL) && written == 1;
 }
 
-void putu32(uint8_t* p, uint32_t v) {
-	p[0] = (v & 0x000000FF) >>  0;
-	p[1] = (v & 0x0000FF00) >>  8;
-	p[2] = (v & 0x00FF0000) >> 16;
-	p[3] = (v & 0xFF000000) >> 24;
-}
-
 void state_pending(uint8_t b) {
 	if (b == 0x1E) {
 		printf("Sending...\n");
@@ -41,8 +38,8 @@ void state_pending(uint8_t b) {
 		uint32_t hash = crc_32(text, text_len);
 		printf("hash=%08X\n", hash);
 		uint8_t buf[1024];
-		putu32(buf + 1, text_len);
-		putu32(buf + 5, hash);
+		bs_putu32l(buf + 1, text_len);
+		bs_putu32l(buf + 5, hash);
 		memcpy(buf + 9, text, text_len);
 		send_bytes(buf, text_len + 9);
 		state = STATE_WAITING_ACK;
@@ -55,7 +52,7 @@ void handler(uint8_t b) {
 		state_pending(b);
 		break;
 	case STATE_WAITING_ACK:
-		if (b == 0xFA) { printf("Hash check successful."); }
+		if (b == 0xFA) { printf("Hash check successful.\n"); }
 		break;
 	}
 }

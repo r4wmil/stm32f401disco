@@ -12,6 +12,10 @@
 #include "crc.h"
 #undef  CRC_IMPLEMENTATION
 
+#define BINSER_IMPLEMENTATION
+#include "binser.h"
+#undef  BINSER_IMPLEMENTATION
+
 enum {
 	STATE_PENDING = 0,
 	STATE_WAITING
@@ -29,22 +33,15 @@ void state_pending(uint8_t b) {
 	}
 }
 
-uint32_t getu32(const uint8_t* p) {
-    return (uint32_t)p[0]
-         | (uint32_t)p[1] << 8
-         | (uint32_t)p[2] << 16
-         | (uint32_t)p[3] << 24;
-}
-
 void precv(uint8_t b) {
 	GPIOD->ODR |=  (1U << LEDS + 1);
 	uint8_t lenb[4];
 	lenb[0] = b;
 	for (int i = 1; i < 4; i++) lenb[i] = usart2_recv();
-	uint32_t len = getu32(lenb);
+	uint32_t len = bs_getu32l(lenb);
 	uint8_t hashb[4];
 	for (int i = 0; i < 4; i++) hashb[i] = usart2_recv();
-	uint32_t hash = getu32(hashb);
+	uint32_t hash = bs_getu32l(hashb);
 	uint8_t buf[1024];
 	for (int i = 0; i < len; i++) { buf[i] = usart2_recv(); }
 	uint32_t new_hash = crc_32(buf, len);
