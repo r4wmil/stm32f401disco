@@ -18,7 +18,8 @@
 
 enum {
 	STATE_PENDING = 0,
-	STATE_WAITING
+	STATE_READ_HEADER,
+	STATE_READ_PAYLOAD
 };
 
 int state = STATE_PENDING;
@@ -29,55 +30,59 @@ void state_pending(uint8_t b) {
 		usart2_send(0x1E);
 		GPIOD->ODR &= ~(1U << LEDS + 2);
 		sent = 1;
-		state = STATE_WAITING;
+		state = STATE_READ_HEADER;
 	}
 }
 
-void precv(uint8_t b) {
-	static bool is_first = 1;
-	if (is_first && b == 0x01) {
-		is_first = 0;
+typedef struct page_reader {
+	bool bufen;
+	uint8_t buf[1024];
+	size_t buftop;
+	uint32_t len;
+	uint32_t hash;
+} page_reader;
+
+page_reader pr = {0};
+
+
+void state_read_header(uint8_t b) {
+	if (!pr.bufen && b == 0x01) {
+		pr.bufen = 1;
 		return;
 	}
-	static uint8_t buf[1024];
-	static size_t buftop = 0;
-	if (buftop < 1024) {
-		buf[buftop++] = b;
-	}
-	// Parse
-	if (buftop < 8) { return; }
-	uint32_t len  = bs_getu32l(buf + 0);
-	uint32_t hash = bs_getu32l(buf + 4);
-	if (buftop < 8 + len) { return; }
-	uint32_t new_hash = crc_32(buf + 8, len);
-	if (hash == new_hash) {
+	if (pr.buftop < 8) { return; }
+	pr.len  = bs_getu32l(pr.buf + 0);
+	pr.hash = bs_getu32l(pr.buf + 4);
+	state = STATE_READ_PAYLOAD;
+}
+
+void state_read_payload(uint8_t b) {
+	if (pr.buftop < 8 + pr.len) { return; }
+	uint32_t new_hash = crc_32(pr.buf + 8, pr.len);
+	if (pr.hash == new_hash) {
 		usart2_send(0xFA);
 		GPIOD->ODR |=  (1U << LEDS + 0);
 	}
-	//GPIOD->ODR |=  (1U << LEDS + 1);
-	//uint8_t lenb[4];
-	//lenb[0] = b;
-	//for (int i = 1; i < 4; i++) lenb[i] = usart2_recv();
-	//uint32_t len = bs_getu32l(lenb);
-	//uint8_t hashb[4];
-	//for (int i = 0; i < 4; i++) hashb[i] = usart2_recv();
-	//uint32_t hash = bs_getu32l(hashb);
-	//uint8_t buf[1024];
-	//for (int i = 0; i < len; i++) { buf[i] = usart2_recv(); }
-	//uint32_t new_hash = crc_32(buf, len);
-	//if (hash == new_hash) {
-	//	usart2_send(0xFA);
-	//	GPIOD->ODR |=  (1U << LEDS + 0);
-	//}
+}
+
+void bufadd(uint8_t b) {
+	if (!pr.bufen) { return; }
+	if (pr.buftop < 1024) {
+		pr.buf[pr.buftop++] = b;
+	}
 }
 
 void handle(uint8_t b) {
+	bufadd(b);
 	switch (state) {
 	case STATE_PENDING:
 		state_pending(b);
 		break;
-	case STATE_WAITING:
-		precv(b);
+	case STATE_READ_HEADER:
+		state_read_header(b);
+		break;
+	case STATE_READ_PAYLOAD:
+		state_read_payload(b);
 		break;
 	}
 }

@@ -33,7 +33,7 @@ int send_bytes(uint8_t* buf, size_t len) {
 void state_pending(uint8_t b) {
 	if (b == 0x1E) {
 		printf("Sending...\n");
-		uint8_t text[] = "This is a test text we trying to send!!!";
+		uint8_t text[] = "abcdefg0123";
 		size_t text_len = strlen(text);
 		uint32_t hash = crc_32(text, text_len);
 		printf("hash=%08X\n", hash);
