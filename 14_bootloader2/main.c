@@ -34,30 +34,41 @@ void state_pending(uint8_t b) {
 }
 
 void precv(uint8_t b) {
-	GPIOD->ODR |=  (1U << LEDS + 1);
-	uint8_t lenb[4];
-	lenb[0] = b;
-	for (int i = 1; i < 4; i++) lenb[i] = usart2_recv();
-	uint32_t len = bs_getu32l(lenb);
-	uint8_t hashb[4];
-	for (int i = 0; i < 4; i++) hashb[i] = usart2_recv();
-	uint32_t hash = bs_getu32l(hashb);
-	uint8_t buf[1024];
-	for (int i = 0; i < len; i++) { buf[i] = usart2_recv(); }
-	uint32_t new_hash = crc_32(buf, len);
+	static bool is_first = 1;
+	if (is_first && b == 0x01) {
+		is_first = 0;
+		return;
+	}
+	static uint8_t buf[1024];
+	static size_t buftop = 0;
+	if (buftop < 1024) {
+		buf[buftop++] = b;
+	}
+	// Parse
+	if (buftop < 8) { return; }
+	uint32_t len  = bs_getu32l(buf + 0);
+	uint32_t hash = bs_getu32l(buf + 4);
+	if (buftop < 8 + len) { return; }
+	uint32_t new_hash = crc_32(buf + 8, len);
 	if (hash == new_hash) {
 		usart2_send(0xFA);
 		GPIOD->ODR |=  (1U << LEDS + 0);
 	}
-}
-
-void state_waiting(uint8_t b) {
-	if (b) {
-		precv(b);
-		state = STATE_PENDING;
-		//usart2_send(b);
-		//if (b == 0x12) GPIOD->ODR |=  (1U << LEDS + 1);
-	}
+	//GPIOD->ODR |=  (1U << LEDS + 1);
+	//uint8_t lenb[4];
+	//lenb[0] = b;
+	//for (int i = 1; i < 4; i++) lenb[i] = usart2_recv();
+	//uint32_t len = bs_getu32l(lenb);
+	//uint8_t hashb[4];
+	//for (int i = 0; i < 4; i++) hashb[i] = usart2_recv();
+	//uint32_t hash = bs_getu32l(hashb);
+	//uint8_t buf[1024];
+	//for (int i = 0; i < len; i++) { buf[i] = usart2_recv(); }
+	//uint32_t new_hash = crc_32(buf, len);
+	//if (hash == new_hash) {
+	//	usart2_send(0xFA);
+	//	GPIOD->ODR |=  (1U << LEDS + 0);
+	//}
 }
 
 void handle(uint8_t b) {
@@ -66,18 +77,23 @@ void handle(uint8_t b) {
 		state_pending(b);
 		break;
 	case STATE_WAITING:
-		state_waiting(b);
+		precv(b);
 		break;
 	}
+}
+
+void USART2_IRQHandler(void) {
+	uint8_t b = (uint8_t)USART2->DR;
+	handle(b);
 }
 
 int main(void) {
 	leds_init();
 	pll_init();
 	usart2_init();
+	NVIC_EnableIRQ(USART2_IRQn);
 	GPIOD->ODR |=  (1U << LEDS + 2);
 	while (1) {
-		uint8_t b = usart2_recv();
-		handle(b);
+		__NOP();
 	}
 }

@@ -27,7 +27,7 @@ int send_byte(unsigned char b) {
 
 int send_bytes(uint8_t* buf, size_t len) {
 	DWORD written;
-	return WriteFile(clienth, buf, len, &written, NULL) && written == 1;
+	return WriteFile(clienth, buf, len, &written, NULL) && written == len;
 }
 
 void state_pending(uint8_t b) {
@@ -38,15 +38,20 @@ void state_pending(uint8_t b) {
 		uint32_t hash = crc_32(text, text_len);
 		printf("hash=%08X\n", hash);
 		uint8_t buf[1024];
+		buf[0] = 0x01;
 		bs_putu32l(buf + 1, text_len);
 		bs_putu32l(buf + 5, hash);
 		memcpy(buf + 9, text, text_len);
 		send_bytes(buf, text_len + 9);
+		for (int i = 0; i < text_len + 9; i++)
+			printf("%02X ", buf[i]);
+		printf("\n");
 		state = STATE_WAITING_ACK;
 	}
 }
 
 void handler(uint8_t b) {
+	//printf("%c", b);
 	switch (state) {
 	case STATE_PENDING:
 		state_pending(b);

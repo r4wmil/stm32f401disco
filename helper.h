@@ -105,9 +105,15 @@ void usart2_init() {
 	// BRR - Baud Rate Register
 	// TE - Transmitter Enable
 	// UE - USART Enable
+	// RXNEIE - Receive Not Empty Interrupt Enable
 	// 42 MHz (APB1 spped) / 9600 baud rate
 	USART2->BRR = 42000000 / 9600;
-	USART2->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+	USART2->CR1 =
+		USART_CR1_TE |
+		USART_CR1_RE |
+		USART_CR1_RXNEIE |
+		USART_CR1_UE;
+
 }
 
 void usart2_send(uint8_t b) {
