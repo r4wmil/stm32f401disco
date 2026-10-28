@@ -38,12 +38,13 @@ void state_pending(uint8_t b) {
 		uint32_t hash = crc_32(text, text_len);
 		printf("hash=%08X\n", hash);
 		uint8_t buf[1024];
-		buf[0] = 0x01;
-		bs_putu32l(buf + 1, text_len);
-		bs_putu32l(buf + 5, hash);
-		memcpy(buf + 9, text, text_len);
-		send_bytes(buf, text_len + 9);
-		for (int i = 0; i < text_len + 9; i++)
+		memcpy(buf, (uint8_t[]){0x12,0xEF,0x34,0xCD}, 4);
+		bs_putu32l(buf + 4, text_len);
+		bs_putu32l(buf + 8, hash);
+		// TODO: lib that serializes shi
+		memcpy(buf + 12, text, text_len);
+		send_bytes(buf, text_len + 12);
+		for (int i = 0; i < text_len + 12; i++)
 			printf("%02X ", buf[i]);
 		printf("\n");
 		state = STATE_WAITING_ACK;
@@ -52,6 +53,7 @@ void state_pending(uint8_t b) {
 
 void handler(uint8_t b) {
 	//printf("%c", b);
+	printf("%02X\n", b);
 	switch (state) {
 	case STATE_PENDING:
 		state_pending(b);
