@@ -70,22 +70,21 @@ bool read_key(uint8_t b) {
 	return 0;
 }
 
-void state_read_packet(uint8_t b) {
-	if (!read_key(b)) { return; }
-	if (pr.buftop < 8) { return; }
+int state_read_packet(uint8_t b) {
+	if (!read_key(b)) { return 0; }
+	if (pr.buftop < 8) { return 0; }
 	pr.len  = bs_getu32l(pr.buf + 0);
-	//TODO: check buf max size gracefully
-	if (pr.len > 1024) pr.len = 1024;
-	//for (size_t i = 0; i < 4; i++) usart2_send(pr.buf[i]);
+	if (pr.buftop - 8 > pr.len) { return 2; }
 	pr.hash = bs_getu32l(pr.buf + 4);
-	if (pr.buftop < 8 + pr.len) { return; }
+	if (pr.buftop < 8 + pr.len) { return 0; }
 	uint32_t new_hash = crc_32(pr.buf + 8, pr.len);
 	if (pr.hash == new_hash) {
 		usart2_send(0xFA);
 		led_on(0);
+		return 1;
 	}
 	bufoff();
-	state = STATE_PENDING;
+	return 2;
 }
 
 void handle(uint8_t b) {
@@ -95,7 +94,12 @@ void handle(uint8_t b) {
 		state_pending(b);
 		break;
 	case STATE_READ_PACKET:
-		state_read_packet(b);
+		int code = state_read_packet(b);
+		if (code == 2) {
+			// TODO: shared codes
+			usart2_send(0xE4);
+			state = STATE_READ_PACKET;
+		}
 		break;
 	}
 }

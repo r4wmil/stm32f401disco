@@ -60,6 +60,7 @@ void handler(uint8_t b) {
 		break;
 	case STATE_WAITING_ACK:
 		if (b == 0xFA) { printf("Hash check successful.\n"); }
+		if (b == 0xE4) { printf("Error. Sending again.\n"); }
 		break;
 	}
 }
