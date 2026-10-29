@@ -20,6 +20,10 @@ void leds_init() {
 	GPIOD->MODER |= (0x55U << (LEDS * 2)); // 01'01'01'01
 }
 
+void led_on(int led) { GPIOD->ODR |=  (1U << LEDS + led); }
+void led_off(int led) { GPIOD->ODR &= ~(1U << LEDS + led); }
+void led_toggle(int led) { GPIOD->ODR ^= (1U << LEDS + led); }
+
 void pll_init() {
 	RCC->CR |= RCC_CR_HSEON;
 	while (!(RCC->CR & RCC_CR_HSERDY));

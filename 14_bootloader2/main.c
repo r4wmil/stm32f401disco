@@ -27,7 +27,7 @@ void state_pending(uint8_t b) {
 	static bool sent = 0;
 	if (!sent && b == 0xF1) {
 		usart2_send(0x1E);
-		GPIOD->ODR &= ~(1U << LEDS + 2);
+		led_on(2);
 		sent = 1;
 		state = STATE_READ_PACKET;
 	}
@@ -82,7 +82,7 @@ void state_read_packet(uint8_t b) {
 	uint32_t new_hash = crc_32(pr.buf + 8, pr.len);
 	if (pr.hash == new_hash) {
 		usart2_send(0xFA);
-		GPIOD->ODR |=  (1U << LEDS + 0);
+		led_on(0);
 	}
 	bufoff();
 	state = STATE_PENDING;
@@ -110,7 +110,7 @@ int main(void) {
 	pll_init();
 	usart2_init();
 	NVIC_EnableIRQ(USART2_IRQn);
-	GPIOD->ODR |=  (1U << LEDS + 2);
+	led_on(2);
 	while (1) {
 		__NOP();
 	}
