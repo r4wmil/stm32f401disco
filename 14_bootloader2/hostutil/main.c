@@ -37,13 +37,15 @@ void state_pending(uint8_t b) {
 		size_t text_len = strlen(text);
 		uint32_t hash = crc_32(text, text_len);
 		printf("hash=%08X\n", hash);
+
 		uint8_t buf[1024];
-		memcpy(buf, (uint8_t[]){0x12,0xEF,0x34,0xCD}, 4);
-		bs_putu32l(buf + 4, text_len);
-		bs_putu32l(buf + 8, hash);
-		// TODO: lib that serializes shi
-		memcpy(buf + 12, text, text_len);
-		send_bytes(buf, text_len + 12);
+		bswriter_t bsw = {.buf=buf,.top=0};
+		bsw_putbuf(&bsw, (uint8_t[]){0x12,0xEF,0x34,0xCD}, 4);
+		bsw_putu32l(&bsw, text_len);
+		bsw_putu32l(&bsw, hash);
+		bsw_putbuf(&bsw, text, text_len);
+
+		send_bytes(bsw.buf, text_len + 12);
 		for (int i = 0; i < text_len + 12; i++)
 			printf("%02X ", buf[i]);
 		printf("\n");
