@@ -16,6 +16,8 @@
 #include "binser.h"
 #undef  BINSER_IMPLEMENTATION
 
+#include "codes.h"
+
 enum {
 	STATE_PENDING = 0,
 	STATE_READ_PACKET
@@ -25,8 +27,8 @@ int state = STATE_PENDING;
 
 void state_pending(uint8_t b) {
 	static bool sent = 0;
-	if (!sent && b == 0xF1) {
-		usart2_send(0x1E);
+	if (!sent && b == HOST_SYN) {
+		usart2_send(CLIENT_ACK);
 		led_on(2);
 		sent = 1;
 		state = STATE_READ_PACKET;
@@ -55,7 +57,7 @@ void bufon(uint8_t b) { pr.bufen = 1; }
 void bufoff() { pr.bufen = 0; }
 
 bool read_key(uint8_t b) {
-	static uint8_t key[4] = {0x12,0xEF,0x34,0xCD};
+	static uint8_t key[4] = PACKET_KEY;
 	static size_t top = 0;
 	if (top == 4) { return 1; }
 	if (key[top] == b) {

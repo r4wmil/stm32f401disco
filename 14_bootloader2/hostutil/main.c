@@ -11,6 +11,8 @@
 #include "binser.h"
 #undef  BINSER_IMPLEMENTATION
 
+#include "codes.h"
+
 enum {
 	STATE_PENDING = 0,
 	STATE_WAITING_ACK
@@ -40,13 +42,13 @@ void state_pending(uint8_t b) {
 
 		uint8_t buf[1024];
 		bswriter_t bsw = {.buf=buf,.top=0};
-		bsw_putbuf(&bsw, (uint8_t[]){0x12,0xEF,0x34,0xCD}, 4);
+		bsw_putbuf(&bsw, (uint8_t[])PACKET_KEY, 4);
 		bsw_putu32l(&bsw, text_len);
 		bsw_putu32l(&bsw, hash);
 		bsw_putbuf(&bsw, text, text_len);
 
-		send_bytes(bsw.buf, text_len + 12);
-		for (int i = 0; i < text_len + 12; i++)
+		send_bytes(bsw.buf, bsw.top);
+		for (int i = 0; i < bsw.top; i++)
 			printf("%02X ", buf[i]);
 		printf("\n");
 		state = STATE_WAITING_ACK;
@@ -61,8 +63,8 @@ void handler(uint8_t b) {
 		state_pending(b);
 		break;
 	case STATE_WAITING_ACK:
-		if (b == 0xFA) { printf("Hash check successful.\n"); }
-		if (b == 0xE4) { printf("Error. Sending again.\n"); }
+		if (b == CLIENT_SUCCESS) { printf("Hash check successful.\n"); }
+		if (b == CLIENT_ERROR) { printf("Error. Sending again.\n"); }
 		break;
 	}
 }
@@ -112,7 +114,7 @@ int main(int argc, char** argv) {
 
 	state = STATE_PENDING;
 	printf("Handshaking...\n");
-	assert(send_byte(0xF1));
+	assert(send_byte(HOST_SYN));
 	while (1) {
 		ReadFile(clienth, &b, 1, &n, NULL);
 		if (n == 0) continue;
