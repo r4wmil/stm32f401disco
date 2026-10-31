@@ -64,7 +64,8 @@ void handler(uint8_t b) {
 int main(int argc, char** argv) {
 
 	char crc_test[] = "testTest";
-	printf("crc_test_hash=%08X\n", crc_32(crc_test, strlen(crc_test)));
+	printf("crc_test_hash32=%08X\n", crc_32(crc_test, strlen(crc_test)));
+	printf("crc_test_hash16=%04X\n", crc_16(crc_test, strlen(crc_test)));
 
 	if (uartcom_init())
 		return 1;
