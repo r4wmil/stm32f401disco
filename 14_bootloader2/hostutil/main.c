@@ -17,16 +17,12 @@
 
 #include "codes.h"
 
-void send_test() {
-	printf("Sending...\n");
-	uint8_t text[] = "abcdefg0123";
-	size_t text_len = strlen(text);
-
-	uint8_t buf[1024];
+void send_test(uint8_t* d, size_t dsz) {
+	uint8_t* buf = malloc(1 + 4 + dsz + 4);
 	bswriter_t bsw = {.buf=buf,.top=0};
 	bsw_putu8(&bsw, HOST_SOH);
-	bsw_putu32l(&bsw, text_len);
-	bsw_putbuf(&bsw, text, text_len);
+	bsw_putu32l(&bsw, dsz);
+	bsw_putbuf(&bsw, d, dsz);
 	uint32_t hash = crc_32(bsw.buf + 1, bsw.top - 1);
 	printf("hash=%08X\n", hash);
 	bsw_putu32l(&bsw, hash);
@@ -35,34 +31,54 @@ void send_test() {
 	for (int i = 0; i < bsw.top; i++)
 		printf("%02X ", buf[i]);
 	printf("\n");
+	free(buf);
 }
 
 void handler(uint8_t b) {
-	printf("%02X\n", b);
+	//printf("%02X\n", b);
 	//printf("%c", b);
 	if (b == CLIENT_ACK) { printf("Hash check successful.\n"); }
 	if (b == CLIENT_NAK) { printf("Error. Sending again.\n"); }
 }
 
 int main(int argc, char** argv) {
-
-	char crc_test[] = "testTest";
-	printf("crc_test_hash32=%08X\n", crc_32(crc_test, strlen(crc_test)));
-	printf("crc_test_hash16=%04X\n", crc_16(crc_test, strlen(crc_test)));
+	if (argc < 2) {
+		printf("Usage: %s <file>\n", argv[0]);
+		return 1;
+	}
 
 	if (uartcom_init())
 		return 1;
 
+	FILE* file = fopen(argv[1], "rb");
+	if (!file) {
+		perror("Failed to open file");
+		return 1;
+	}
+
+	unsigned char* buffer = malloc(MAX_PAGE_SIZE);
+	size_t bytes_read;
+
+	printf("Sending file: %s\n", argv[1]);
+
+	while ((bytes_read = fread(buffer, 1, MAX_PAGE_SIZE, file)) > 0) {
+		send_test((char*)buffer, bytes_read);
+		Sleep(1000);
+	}
+
+	fclose(file);
+	printf("File sent.\n");
+
 	unsigned char b;
 	DWORD n;
 
-	send_test();
 	while (1) {
 		ReadFile(clienth, &b, 1, &n, NULL);
-		if (n == 0) continue;
-		handler(b);
-		//if (b) { printf("%02X\n", b), fflush(stdout); }
+
+		if (n > 0)
+			handler(b);
 	}
 
 	CloseHandle(clienth);
+	return 0;
 }

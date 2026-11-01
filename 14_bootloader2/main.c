@@ -20,7 +20,7 @@
 
 typedef struct page_reader {
 	bool bufen;
-	uint8_t buf[1024];
+	uint8_t* buf;
 	size_t buftop;
 	uint32_t len;
 	uint32_t hash;
@@ -29,7 +29,7 @@ typedef struct page_reader {
 page_reader pr = {0};
 
 void bufadd(uint8_t b) {
-	if (pr.bufen && pr.buftop < 1024) {
+	if (pr.bufen && pr.buftop < PACKET_BUF_SIZE) {
 		pr.buf[pr.buftop] = b;
 		pr.buftop++;
 	}
@@ -43,6 +43,8 @@ int state_read_packet(uint8_t b) {
 	switch (state) {
 	case WAIT_SOH:
 		if (b != HOST_SOH) return 0;
+		// TODO: free
+		pr.buf = malloc(PACKET_BUF_SIZE);
 		pr.buftop = 0;
 		pos = 0;
 		pr.bufen = true;
@@ -90,9 +92,13 @@ void handle(uint8_t b, pkt_recv_fn prf) {
 	}
 }
 
-void pkt_recv(uint8_t* d, size_t dsz) {
+#define ADDR 0x08008000
+
+void pkt_recv(uint8_t *d, size_t dsz) {
 	led_on(0);
-	//printf("text:'%.*s'\n", (int)dsz, d);
+	static uint32_t flash_top = 0;
+	printf("flash_top=%lu\n", flash_top);
+	flash_top += dsz;
 }
 
 void USART2_IRQHandler(void) {
