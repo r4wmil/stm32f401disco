@@ -8,6 +8,7 @@ typedef struct bswriter_t {
 	size_t top;
 } bswriter_t;
 
+void bsw_putu8(bswriter_t* bsw, uint8_t v);
 void bsw_putu32l(bswriter_t* bsw, uint32_t v);
 void bsw_putbuf(bswriter_t* bsw, uint8_t* buf, size_t len);
 
@@ -28,6 +29,11 @@ uint32_t bs_getu32l(const uint8_t* p) {
 		| (uint32_t)p[1] <<  8
 		| (uint32_t)p[2] << 16
 		| (uint32_t)p[3] << 24;
+}
+
+void bsw_putu8(bswriter_t* bsw, uint8_t v) {
+	bsw->buf[bsw->top] = v;
+	bsw->top += 1;
 }
 
 void bsw_putu32l(bswriter_t* bsw, uint32_t v) {

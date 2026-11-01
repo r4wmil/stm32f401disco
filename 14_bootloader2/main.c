@@ -18,23 +18,6 @@
 
 #include "codes.h"
 
-enum {
-	STATE_PENDING = 0,
-	STATE_READ_PACKET
-};
-
-int state = STATE_PENDING;
-
-void state_pending(uint8_t b) {
-	static bool sent = 0;
-	if (!sent && b == HOST_SYN) {
-		usart2_send(CLIENT_ACK);
-		led_on(2);
-		sent = 1;
-		state = STATE_READ_PACKET;
-	}
-}
-
 typedef struct page_reader {
 	bool bufen;
 	uint8_t buf[1024];
@@ -52,63 +35,69 @@ void bufadd(uint8_t b) {
 	}
 }
 
-void bufon(uint8_t b) { pr.bufen = 1; }
+int state_read_packet(uint8_t b) {
+	enum { WAIT_SOH, READ_LEN, READ_PAYLOAD, READ_CRC };
+	static int state = WAIT_SOH;
+	static uint32_t pos;
 
-void bufoff() { pr.bufen = 0; }
+	switch (state) {
+	case WAIT_SOH:
+		if (b != HOST_SOH) return 0;
+		pr.buftop = 0;
+		pos = 0;
+		pr.bufen = true;
+		state = READ_LEN;
+		return 0;
+	case READ_LEN:
+		if (++pos < 4) return 0;
+		pos = 0;
+		pr.len = bs_getu32l(pr.buf);
+		if (pr.len > sizeof(pr.buf) - 8) {
+			state = WAIT_SOH;
+			pr.bufen = false;
+			return 2;
+		}
+		if (pr.len == 0) { return 2; }
+		state = READ_PAYLOAD;
+		return 0;
+	case READ_PAYLOAD:
+		if (++pos < pr.len) return 0;
+		pos = 0;
+		state = READ_CRC;
+		return 0;
+	case READ_CRC:
+		if (++pos < 4) return 0;
+		pr.hash = bs_getu32l(pr.buf + pr.buftop - pos);
+		pos = 0;
+		state = WAIT_SOH;
+		pr.bufen = false;
+		return pr.hash == crc_32(pr.buf, pr.len + 4) ? 1 : 2;
+	}
 
-bool read_key(uint8_t b) {
-	static uint8_t key[4] = PACKET_KEY;
-	static size_t top = 0;
-	if (top == 4) { return 1; }
-	if (key[top] == b) {
-		top++;
-	} else {
-		top = 0;
-	}
-	if (top == 4) {
-		bufon(b);
-		return 1;
-	}
 	return 0;
 }
 
-int state_read_packet(uint8_t b) {
-	if (!read_key(b)) { return 0; }
-	if (pr.buftop < 8) { return 0; }
-	pr.len  = bs_getu32l(pr.buf + 0);
-	if (pr.buftop - 8 > pr.len) { return 2; }
-	pr.hash = bs_getu32l(pr.buf + 4);
-	if (pr.buftop < 8 + pr.len) { return 0; }
-	uint32_t new_hash = crc_32(pr.buf + 8, pr.len);
-	if (pr.hash == new_hash) {
-		usart2_send(0xFA);
-		led_on(0);
-		return 1;
+typedef void (*pkt_recv_fn)(uint8_t*, size_t);
+
+void handle(uint8_t b, pkt_recv_fn prf) {
+	bufadd(b);
+	int code = state_read_packet(b);
+	if (code == 1) {
+		usart2_send(CLIENT_ACK);
+		prf(pr.buf + 8, pr.len);
+	} else if (code == 2) {
+		usart2_send(CLIENT_NAK);
 	}
-	bufoff();
-	return 2;
 }
 
-void handle(uint8_t b) {
-	bufadd(b);
-	switch (state) {
-	case STATE_PENDING:
-		state_pending(b);
-		break;
-	case STATE_READ_PACKET:
-		int code = state_read_packet(b);
-		if (code == 2) {
-			// TODO: shared codes
-			usart2_send(0xE4);
-			state = STATE_READ_PACKET;
-		}
-		break;
-	}
+void pkt_recv(uint8_t* d, size_t dsz) {
+	led_on(0);
+	//printf("text:'%.*s'\n", (int)dsz, d);
 }
 
 void USART2_IRQHandler(void) {
 	uint8_t b = (uint8_t)USART2->DR;
-	handle(b);
+	handle(b, pkt_recv);
 }
 
 int main(void) {
