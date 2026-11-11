@@ -41,6 +41,14 @@ void handler(uint8_t b) {
 	if (b == CLIENT_NAK) { printf("Error. Sending again.\n"); }
 }
 
+void timer_test() {
+	static uint32_t last_time = 0;
+	if (nob_ms() > last_time + 1000) {
+		last_time = nob_ms();
+		printf("time: %lu\n", nob_ms());
+	}
+}
+
 int main(int argc, char** argv) {
 	if (argc < 2) {
 		printf("Usage: %s <file>\n", argv[0]);
@@ -74,9 +82,9 @@ int main(int argc, char** argv) {
 
 	while (1) {
 		ReadFile(clienth, &b, 1, &n, NULL);
-
 		if (n > 0)
 			handler(b);
+		timer_test();
 	}
 
 	CloseHandle(clienth);

@@ -6,11 +6,41 @@ extern HANDLE clienth;
 int send_byte(unsigned char b);
 int send_bytes(uint8_t* buf, size_t len);
 
+uint64_t nob_nanos(void);
+uint64_t nob_ms(void);
+
+#define NOB_NANOS_PER_SEC (1000*1000*1000)
+
 #endif /* UARTCOM_H */
 
 #ifdef UARTCOM_IMPLEMENTATION
 
+#include <time.h>
+
 HANDLE clienth;
+
+uint64_t nob_nanos(void) {
+#ifdef _WIN32
+	LARGE_INTEGER Time;
+	QueryPerformanceCounter(&Time);
+	static LARGE_INTEGER Frequency = {0};
+	if (Frequency.QuadPart == 0) {
+		QueryPerformanceFrequency(&Frequency);
+	}
+	uint64_t Secs  = Time.QuadPart / Frequency.QuadPart;
+	uint64_t Nanos = Time.QuadPart % Frequency.QuadPart * NOB_NANOS_PER_SEC / Frequency.QuadPart;
+	return NOB_NANOS_PER_SEC * Secs + Nanos;
+#else
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	return NOB_NANOS_PER_SEC * ts.tv_sec + ts.tv_nsec;
+#endif // _WIN32
+}
+
+uint64_t nob_ms(void) {
+	return nob_nanos() / 1000 / 1000;
+}
 
 int send_byte(unsigned char b) {
 	DWORD written;
