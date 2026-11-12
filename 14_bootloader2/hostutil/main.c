@@ -34,6 +34,32 @@ void send_test(uint8_t* d, size_t dsz) {
 	free(buf);
 }
 
+#include <pthread.h>
+
+char* argv1;
+
+void* send_file(void* arg) {
+	FILE* file = fopen(argv1, "rb");
+	if (!file) {
+		perror("Failed to open file");
+		return NULL;
+	}
+
+	unsigned char* buffer = malloc(MAX_PAGE_SIZE);
+	size_t bytes_read;
+
+	printf("Sending file: %s\n", argv1);
+
+	while ((bytes_read = fread(buffer, 1, MAX_PAGE_SIZE, file)) > 0) {
+		send_test((char*)buffer, bytes_read);
+		Sleep(1000);
+	}
+
+	fclose(file);
+	printf("File sent.\n");
+	return NULL;
+}
+
 void handler(uint8_t b) {
 	//printf("%02X\n", b);
 	//printf("%c", b);
@@ -58,24 +84,11 @@ int main(int argc, char** argv) {
 	if (uartcom_init())
 		return 1;
 
-	FILE* file = fopen(argv[1], "rb");
-	if (!file) {
-		perror("Failed to open file");
-		return 1;
-	}
-
-	unsigned char* buffer = malloc(MAX_PAGE_SIZE);
-	size_t bytes_read;
-
-	printf("Sending file: %s\n", argv[1]);
-
-	while ((bytes_read = fread(buffer, 1, MAX_PAGE_SIZE, file)) > 0) {
-		send_test((char*)buffer, bytes_read);
-		Sleep(1000);
-	}
-
-	fclose(file);
-	printf("File sent.\n");
+	argv1 = argv[1];
+	pthread_t sf_thr;
+	int sf_res;
+	pthread_create(&sf_thr, NULL, *send_file, NULL);
+	//pthread_join(sf_thr, NULL);
 
 	unsigned char b;
 	DWORD n;
@@ -84,7 +97,7 @@ int main(int argc, char** argv) {
 		ReadFile(clienth, &b, 1, &n, NULL);
 		if (n > 0)
 			handler(b);
-		timer_test();
+		//timer_test();
 	}
 
 	CloseHandle(clienth);

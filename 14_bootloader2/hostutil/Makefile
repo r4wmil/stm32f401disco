@@ -1,3 +1,3 @@
 all:
 	mkdir -p ./out/
-	gcc main.c -o ./out/hostutil -I../../
+	gcc main.c -pthread -o ./out/hostutil -I../../
