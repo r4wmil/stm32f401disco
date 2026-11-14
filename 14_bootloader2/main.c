@@ -106,8 +106,9 @@ void handle(uint8_t b, pkt_recv_fn prf) {
 void pkt_recv(uint8_t *d, size_t dsz) {
 	led_on(0);
 	static uint32_t flash_top = 0;
-	printf("flash_top=%lu\n", flash_top);
+	printf("flash_top=%lu->", flash_top);
 	flash_top += dsz;
+	printf("%lu\n", flash_top);
 }
 
 void USART2_IRQHandler(void) {
