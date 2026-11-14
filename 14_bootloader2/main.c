@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "stm32f4xx.h"
 
+#define HELPER_NO__WRITE
 #define HELPER_IMPLEMENTATION
 #include "helper.h"
 #undef  HELPER_IMPLEMENTATION
@@ -17,6 +18,14 @@
 #undef  BINSER_IMPLEMENTATION
 
 #include "codes.h"
+
+int _write(int file, char *ptr, int len) {
+	for (int i = 0; i < len; i++) {
+		usart2_send(CLIENT_DEBUG_LOG);
+		usart2_send(ptr[i]);
+	}
+	return len;
+}
 
 typedef struct page_reader {
 	bool bufen;

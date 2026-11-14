@@ -132,12 +132,14 @@ uint8_t usart2_recv() {
 	return USART2->DR;
 }
 
+#ifndef HELPER_NO__WRITE
 int _write(int file, char *ptr, int len) {
 	for (int i = 0; i < len; i++) {
 		usart2_send(ptr[i]);
 	}
 	return len;
 }
+#endif /* HELPER_NO__WRITE */
 
 // --- FLASH ---
 

@@ -4,6 +4,7 @@
 #define HOST_SOH 0x01
 #define CLIENT_ACK 0x06
 #define CLIENT_NAK 0xE4
+#define CLIENT_DEBUG_LOG 0x33
 #define MAX_PAGE_SIZE (1024)
 #define PACKET_BUF_SIZE (MAX_PAGE_SIZE + 8)
 

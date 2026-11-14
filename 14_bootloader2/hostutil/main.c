@@ -66,13 +66,20 @@ void* send_file(void* arg) {
 }
 
 void handler(uint8_t b) {
+	static bool debug_byte = 0;
 	//printf("%02X\n", b);
-	//printf("%c", b);
-	if (b == CLIENT_ACK) {
+	if (debug_byte) {
+		printf("%c", b);
+		debug_byte = 0;
+		return;
+	}
+	if (b == CLIENT_DEBUG_LOG) {
+		debug_byte = 1;
+		return;
+	} else if (b == CLIENT_ACK) {
 		pkt_ok = 1;
 		printf("Hash check successful.\n");
-	}
-	if (b == CLIENT_NAK) {
+	} else if (b == CLIENT_NAK) {
 		pkt_ok = 0;
 		printf("Error. Sending again.\n");
 	}
