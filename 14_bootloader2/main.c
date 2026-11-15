@@ -90,6 +90,16 @@ int state_read_packet(uint8_t b) {
 
 typedef void (*pkt_recv_fn)(uint8_t*, size_t);
 
+#define UART_RB_MAX_SIZE 8000
+
+typedef struct uart_rb {
+	uint8_t buf[UART_RB_MAX_SIZE];
+	int h;
+	int t;
+} uart_rb;
+
+uart_rb urb = {0};
+
 void handle(uint8_t b, pkt_recv_fn prf) {
 	bufadd(b);
 	int code = state_read_packet(b);
@@ -113,7 +123,9 @@ void pkt_recv(uint8_t *d, size_t dsz) {
 
 void USART2_IRQHandler(void) {
 	uint8_t b = (uint8_t)USART2->DR;
-	handle(b, pkt_recv);
+	urb.buf[urb.h] = b;
+	urb.h = (urb.h + 1) % UART_RB_MAX_SIZE;
+	//handle(b, pkt_recv);
 }
 
 int main(void) {
@@ -122,7 +134,16 @@ int main(void) {
 	usart2_init();
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
+	int t = 0;
 	while (1) {
-		__NOP();
+		t++;
+		if (t < 10000) continue;
+		t = 0;
+		if (urb.h != urb.t) {
+			uint8_t b = urb.buf[urb.t];
+			//printf("%02X\n", b);
+			handle(b, pkt_recv);
+			urb.t = (urb.t + 1) % UART_RB_MAX_SIZE;
+		}
 	}
 }

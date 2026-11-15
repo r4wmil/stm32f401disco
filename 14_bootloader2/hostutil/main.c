@@ -57,7 +57,6 @@ void* send_file(void* arg) {
 			bool is_break = 0;
 			pthread_mutex_lock(&pkt_ok_mx);
 			if (pkt_ok == 1) {
-				Sleep(1000);
 				send_test((char*)buffer, bytes_read);
 				pkt_ok = -1;
 				is_break = 1;
@@ -66,8 +65,6 @@ void* send_file(void* arg) {
 			if (is_break) { break; }
 			Sleep(20);
 		}
-		//send_test((char*)buffer, bytes_read);
-		//Sleep(1000);
 	}
 
 	fclose(file);
