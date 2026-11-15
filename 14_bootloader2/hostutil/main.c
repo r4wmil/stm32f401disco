@@ -53,20 +53,21 @@ void* send_file(void* arg) {
 	//printf("Sending file: %s\n", argv1);
 
 	while ((bytes_read = fread(buffer, 1, MAX_PAGE_SIZE, file)) > 0) {
-		//while (1) {
-		//	bool is_break = 0;
-		//	pthread_mutex_lock(&pkt_ok_mx);
-		//	if (pkt_ok == 1) {
-		//		send_test((char*)buffer, bytes_read);
-		//		pkt_ok = -1;
-		//		is_break = 1;
-		//	}
-		//	pthread_mutex_unlock(&pkt_ok_mx);
-		//	if (is_break) { break; }
-		//	Sleep(10);
-		//}
-		send_test((char*)buffer, bytes_read);
-		Sleep(1000);
+		while (1) {
+			bool is_break = 0;
+			pthread_mutex_lock(&pkt_ok_mx);
+			if (pkt_ok == 1) {
+				Sleep(1000);
+				send_test((char*)buffer, bytes_read);
+				pkt_ok = -1;
+				is_break = 1;
+			}
+			pthread_mutex_unlock(&pkt_ok_mx);
+			if (is_break) { break; }
+			Sleep(20);
+		}
+		//send_test((char*)buffer, bytes_read);
+		//Sleep(1000);
 	}
 
 	fclose(file);
@@ -86,14 +87,14 @@ void handler(uint8_t b) {
 		debug_byte = 1;
 		return;
 	} else if (b == CLIENT_ACK) {
-		//pthread_mutex_lock(&pkt_ok_mx);
-		//pkt_ok = 1;
-		//pthread_mutex_unlock(&pkt_ok_mx);
+		pthread_mutex_lock(&pkt_ok_mx);
+		pkt_ok = 1;
+		pthread_mutex_unlock(&pkt_ok_mx);
 		printf("Hash check successful.\n");
 	} else if (b == CLIENT_NAK) {
-		//pthread_mutex_lock(&pkt_ok_mx);
-		//pkt_ok = 0;
-		//pthread_mutex_unlock(&pkt_ok_mx);
+		pthread_mutex_lock(&pkt_ok_mx);
+		pkt_ok = 0;
+		pthread_mutex_unlock(&pkt_ok_mx);
 		printf("Error. Sending again.\n");
 	}
 }
@@ -122,7 +123,6 @@ int main(int argc, char** argv) {
 	pthread_t sf_thr;
 	int sf_res;
 	pkt_ok = 1;
-	//pthread_mutex_init(&pkt_ok_mx, NULL);
 	pthread_create(&sf_thr, NULL, *send_file, NULL);
 
 	unsigned char b;
@@ -135,7 +135,6 @@ int main(int argc, char** argv) {
 		timer_test();
 	}
 	pthread_join(sf_thr, NULL);
-	//pthread_mutex_destroy(&pkt_ok_mx);
 	CloseHandle(clienth);
 	return 0;
 }
