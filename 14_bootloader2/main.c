@@ -48,11 +48,11 @@ int state_read_packet(uint8_t b) {
 	enum { WAIT_SOH, READ_LEN, READ_PAYLOAD, READ_CRC };
 	static int state = WAIT_SOH;
 	static uint32_t pos;
-
+	pos++;
 	switch (state) {
 	case WAIT_SOH:
 		if (b != HOST_SOH) return 0;
-		// TODO: free
+		free(pr.buf);
 		pr.buf = malloc(PACKET_BUF_SIZE);
 		pr.buftop = 0;
 		pos = 0;
@@ -60,7 +60,7 @@ int state_read_packet(uint8_t b) {
 		state = READ_LEN;
 		return 0;
 	case READ_LEN:
-		if (++pos < 4) return 0;
+		if (pos < 4) return 0;
 		pos = 0;
 		pr.len = bs_getu32l(pr.buf);
 		if (pr.len > sizeof(pr.buf) - 8) {
@@ -72,17 +72,17 @@ int state_read_packet(uint8_t b) {
 		state = READ_PAYLOAD;
 		return 0;
 	case READ_PAYLOAD:
-		if (++pos < pr.len) return 0;
+		if (pos < pr.len) return 0;
 		pos = 0;
 		state = READ_CRC;
 		return 0;
 	case READ_CRC:
-		if (++pos < 4) return 0;
-		pr.hash = bs_getu32l(pr.buf + pr.buftop - pos);
+		if (pos < 4) return 0;
+		pr.hash = bs_getu32l(pr.buf + pr.buftop - 4);
 		pos = 0;
 		state = WAIT_SOH;
 		pr.bufen = false;
-		return pr.hash == crc_32(pr.buf, pr.len + 4) ? 1 : 2;
+		return pr.hash == crc_32(pr.buf, 4 + pr.len) ? 1 : 2;
 	}
 
 	return 0;
@@ -119,6 +119,10 @@ void pkt_recv(uint8_t *d, size_t dsz) {
 	printf("flash_top=%lu->", flash_top);
 	flash_top += dsz;
 	printf("%lu\n", flash_top);
+	// TODO: last packet
+	if (0) {
+		free(pr.buf);
+	}
 }
 
 void USART2_IRQHandler(void) {
