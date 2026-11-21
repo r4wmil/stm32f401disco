@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 #include "stm32f4xx.h"
 
 #define HELPER_NO__WRITE
@@ -92,13 +93,16 @@ typedef void (*pkt_recv_fn)(uint8_t*, size_t);
 
 #define UART_RB_MAX_SIZE 8000
 
+#include "rb.h"
+
 typedef struct uart_rb {
 	uint8_t buf[UART_RB_MAX_SIZE];
-	int h;
-	int t;
+	volatile size_t h;
+	volatile size_t t;
+	size_t cap;
 } uart_rb;
 
-uart_rb urb = {0};
+uart_rb urb = {.cap=UART_RB_MAX_SIZE};
 
 void handle(uint8_t b, pkt_recv_fn prf) {
 	bufadd(b);
@@ -127,9 +131,12 @@ void pkt_recv(uint8_t *d, size_t dsz) {
 
 void USART2_IRQHandler(void) {
 	uint8_t b = (uint8_t)USART2->DR;
-	urb.buf[urb.h] = b;
-	urb.h = (urb.h + 1) % UART_RB_MAX_SIZE;
-	//handle(b, pkt_recv);
+	//urb.buf[urb.h] = b;
+	//urb.h = (urb.h + 1) % UART_RB_MAX_SIZE;
+	if (!RB_PUSH(&urb, b)) {
+		printf("Buffer overflow!\r\n");
+		assert(0);
+	}
 }
 
 int main(void) {
@@ -139,11 +146,16 @@ int main(void) {
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
 	while (1) {
-		if (urb.h != urb.t) {
-			uint8_t b = urb.buf[urb.t];
-			//printf("%02X\n", b);
+		//if (urb.h != urb.t) {
+		//	uint8_t b = urb.buf[urb.t];
+		//	//printf("%02X\n", b);
+		//	handle(b, pkt_recv);
+		//	urb.t = (urb.t + 1) % UART_RB_MAX_SIZE;
+		//}
+		uint8_t b;
+		if (RB_POP(&urb, &b)) {
+			//printf("%02X\r\n", b);
 			handle(b, pkt_recv);
-			urb.t = (urb.t + 1) % UART_RB_MAX_SIZE;
 		}
 	}
 }
