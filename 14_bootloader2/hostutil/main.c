@@ -72,11 +72,32 @@ void* send_file(void* arg) {
 	return NULL;
 }
 
+#include "rb.h"
+
+#define DEBUG_RB_MAX_SIZE 128
+
+typedef struct dbg_rb {
+	uint8_t buf[DEBUG_RB_MAX_SIZE];
+	size_t h;
+	size_t t;
+	size_t cap;
+} dbg_rb;
+
+dbg_rb drb = {.cap=DEBUG_RB_MAX_SIZE};
+
 void handler(uint8_t b) {
 	static bool debug_byte = 0;
 	//printf("%02X\n", b);
 	if (debug_byte) {
-		printf("%c", b);
+		int push_ok = RB_PUSH(&drb, b);
+		if (b == '\n' || !push_ok) {
+			uint8_t b = 0;
+			printf("[UART] ");
+			while (RB_POP(&drb, &b)) {
+				printf("%c", b);
+			}
+			if (!push_ok) printf(">>>\n");
+		}
 		debug_byte = 0;
 		return;
 	}
