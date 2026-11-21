@@ -138,11 +138,7 @@ int main(void) {
 	usart2_init();
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
-	int t = 0;
 	while (1) {
-		t++;
-		if (t < 10000) continue;
-		t = 0;
 		if (urb.h != urb.t) {
 			uint8_t b = urb.buf[urb.t];
 			//printf("%02X\n", b);
