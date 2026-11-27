@@ -64,7 +64,6 @@ int state_read_packet(uint8_t b) {
 	pos++;
 	switch (state) {
 	case WAIT_SOH:
-		printf("SOH!\r\n");
 		if (b != HOST_SOH) return 0;
 		free(pr.buf);
 		pr.buf = malloc(PACKET_BUF_SIZE);
@@ -155,12 +154,14 @@ int main(void) {
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
 	printf("UART OK!\r\n");
+	bool host_connected = false;
 	while (1) {
 		uint8_t b;
 		if (RB_POP(&urb, &b)) {
 			handle(b, pkt_recv);
+			host_connected = true;
 		}
-		if (RB_POP(&drb, &b)) {
+		if (host_connected && RB_POP(&drb, &b)) {
 			usart2_send(CLIENT_DEBUG_LOG);
 			usart2_send(b);
 		}
