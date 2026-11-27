@@ -98,7 +98,7 @@ void mco_init() {
 
 // --- USART ---
 
-void usart2_init() {
+void usart2_init(uint32_t baud) {
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
 	RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
 
@@ -113,7 +113,8 @@ void usart2_init() {
 	// UE - USART Enable
 	// RXNEIE - Receive Not Empty Interrupt Enable
 	// 42 MHz (APB1 spped) / 9600 baud rate
-	USART2->BRR = 42000000 / 9600;
+	// 9600, 19200, 38400, 57600, 115200
+	USART2->BRR = 42000000 / baud;
 	USART2->CR1 =
 		USART_CR1_TE |
 		USART_CR1_RE |

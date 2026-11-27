@@ -132,7 +132,7 @@ int main(void) {
 	pll_init();
 	mco_init();
 	leds_init();
-	usart2_init();
+	usart2_init(115200);
 	// xTaskCreate(fn, name, stack_depth, fn_params, priority, task_ptr);
 	com_hello();
 	xTaskCreate(task_com, "task_com", 2048, NULL, 1, NULL);

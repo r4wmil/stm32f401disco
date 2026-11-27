@@ -31,7 +31,7 @@ int main(void) {
 	leds_init();
 	led_on(0);
 	pll_init();
-	usart2_init();
+	usart2_init(115200);
 	printf("\033[2J\033[H");
 	printf("hello!\r\n");
 	flash_test();
