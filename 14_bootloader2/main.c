@@ -20,10 +20,22 @@
 
 #include "codes.h"
 
+#include "rb.h"
+
+#define UART_RB_MAX_SIZE 8000
+
+typedef struct dbg_rb {
+	uint8_t buf[UART_RB_MAX_SIZE];
+	volatile size_t h;
+	volatile size_t t;
+	size_t cap;
+} dbg_rb;
+
+dbg_rb drb = {.cap=UART_RB_MAX_SIZE};
+
 int _write(int file, char *ptr, int len) {
 	for (int i = 0; i < len; i++) {
-		usart2_send(CLIENT_DEBUG_LOG);
-		usart2_send(ptr[i]);
+		RB_PUSH(&drb, ptr[i]);
 	}
 	return len;
 }
@@ -52,6 +64,7 @@ int state_read_packet(uint8_t b) {
 	pos++;
 	switch (state) {
 	case WAIT_SOH:
+		printf("SOH!\r\n");
 		if (b != HOST_SOH) return 0;
 		free(pr.buf);
 		pr.buf = malloc(PACKET_BUF_SIZE);
@@ -90,10 +103,6 @@ int state_read_packet(uint8_t b) {
 }
 
 typedef void (*pkt_recv_fn)(uint8_t*, size_t);
-
-#define UART_RB_MAX_SIZE 8000
-
-#include "rb.h"
 
 typedef struct uart_rb {
 	uint8_t buf[UART_RB_MAX_SIZE];
@@ -142,20 +151,18 @@ void USART2_IRQHandler(void) {
 int main(void) {
 	leds_init();
 	pll_init();
-	usart2_init();
+	usart2_init(9600);
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
+	printf("UART OK!\r\n");
 	while (1) {
-		//if (urb.h != urb.t) {
-		//	uint8_t b = urb.buf[urb.t];
-		//	//printf("%02X\n", b);
-		//	handle(b, pkt_recv);
-		//	urb.t = (urb.t + 1) % UART_RB_MAX_SIZE;
-		//}
 		uint8_t b;
 		if (RB_POP(&urb, &b)) {
-			//printf("%02X\r\n", b);
 			handle(b, pkt_recv);
+		}
+		if (RB_POP(&drb, &b)) {
+			usart2_send(CLIENT_DEBUG_LOG);
+			usart2_send(b);
 		}
 	}
 }
