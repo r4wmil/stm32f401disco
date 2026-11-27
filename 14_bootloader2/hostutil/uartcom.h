@@ -78,7 +78,7 @@ int uartcom_init() {
 
 	DCB dcb = { .DCBlength = sizeof(dcb) };
 	GetCommState(clienth, &dcb);
-	dcb.BaudRate = CBR_9600;
+	dcb.BaudRate = CBR_115200;
 	dcb.ByteSize = 8;
 	dcb.Parity = NOPARITY;
 	dcb.StopBits = ONESTOPBIT;

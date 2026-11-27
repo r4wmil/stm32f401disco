@@ -150,7 +150,7 @@ void USART2_IRQHandler(void) {
 int main(void) {
 	leds_init();
 	pll_init();
-	usart2_init(9600);
+	usart2_init(115200);
 	NVIC_EnableIRQ(USART2_IRQn);
 	led_on(2);
 	printf("UART OK!\r\n");
